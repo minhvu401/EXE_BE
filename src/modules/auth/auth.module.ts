@@ -8,7 +8,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { MailService } from './mail.service';
+import { MailService } from '../mail/mail.service';
 import { User, UserSchema } from './schemas/user.schema';
 import { Otp, OtpSchema } from './schemas/otp.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';

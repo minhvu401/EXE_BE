@@ -24,7 +24,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: UserPayload): UserPayload {
-    console.log('JWT PAYLOAD ĐANG ĐƯỢC NHẬN:', payload);
     if (!payload.sub) {
       throw new UnauthorizedException('Token không hợp lệ (thiếu sub)');
     }
