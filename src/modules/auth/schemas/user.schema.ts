@@ -102,6 +102,28 @@ export class User extends Document {
 
   @ApiProperty()
   @Prop({
+    type: [
+      {
+        postId: { type: Types.ObjectId, ref: 'Post' },
+        title: String,
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    required: false,
+  })
+  posts?: {
+    postId: Types.ObjectId;
+    tags: string[];
+    content: string;
+    images: string[];
+    like: number;
+    isActive: boolean;
+    title: string;
+    createdAt: Date;
+  }[];
+
+  @ApiProperty()
+  @Prop({
     type: {
       isActive: { type: Boolean, default: false },
       expiredAt: { type: Date, required: false },

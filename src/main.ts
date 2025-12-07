@@ -61,5 +61,6 @@ async function bootstrap() {
     console.error('Lỗi:', error);
   }
   await app.listen(process.env.PORT ?? 3000);
+  console.log(`Application is running on: localhost:3000/api`);
 }
 bootstrap();
