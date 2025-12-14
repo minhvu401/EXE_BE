@@ -48,7 +48,7 @@ export class RegisterDto {
   @IsOptional()
   major?: string;
 
-  @ApiProperty({ example: 2024, required: false })
+  @ApiProperty({ example: 4, required: false })
   @IsOptional()
   year?: number;
 

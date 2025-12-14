@@ -10,6 +10,7 @@ import jwtConfig from './config/jwt.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/auth/user.module';
 import { ApplicationModule } from './modules/applications/application.module';
+import { PostModule } from './modules/posts/post.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ApplicationModule } from './modules/applications/application.module';
     AuthModule,
     ApplicationModule,
     UserModule,
+    PostModule,
   ],
   providers: [],
   controllers: [],
