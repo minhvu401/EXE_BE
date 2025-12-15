@@ -115,6 +115,19 @@ export class UserService {
       users,
     };
   }
+
+  async getAllClub() {
+    const clubs = await this.userModel
+      .find({ role: Role.CLUB })
+      .select('-password -__v') // ẩn password và __v
+      .sort({ createdAt: -1 }) // tuỳ chọn: mới nhất lên đầu
+      .lean(); // nhanh hơn chút
+
+    return {
+      total: clubs.length,
+      clubs,
+    };
+  }
   // Deactivate user (Admin or self)
   async deactivateUser(
     userId: string,

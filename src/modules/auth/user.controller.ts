@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Body,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Body, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { CurrentUser } from './decorators/currentUser.decorator';
 import type { UserPayload } from './interface/user-payload.interface';
 import { Roles } from './decorators/role.decorator';
@@ -36,6 +28,15 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Lấy thông tin thành công' })
   async getMyProfile(@CurrentUser() user: UserPayload) {
     return this.userService.getUserProfile(user.sub);
+  }
+
+  @Get('clubs')
+  @ApiOperation({ summary: 'Lấy danh sách tất cả câu lạc bộ' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiResponse({ status: 200, description: 'Lấy danh sách thành công' })
+  async getAllClubs() {
+    return this.userService.getAllClub();
   }
 
   @Get(':id')
@@ -94,8 +95,6 @@ export class UserController {
     return this.userService.getAllUsers(currentUser);
   }
 
-  @Delete(':id/deactivate')
-  @ApiOperation({ summary: 'Vô hiệu hóa tài khoản' })
   @ApiBearerAuth('bearer')
   @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: 'Vô hiệu hóa thành công' })
