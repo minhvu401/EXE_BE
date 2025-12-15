@@ -1,13 +1,20 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Post } from './schema/post.schema';
 import { User } from '../auth/schemas/user.schema';
 import { CreatePostDto } from './dto/create-post.dto';
 import { Role } from '../auth/enum/role.enum';
+import { UpdatePostDto } from './dto/update-post.dto';
 
 @Injectable()
 export class PostService {
@@ -106,11 +113,201 @@ export class PostService {
     }
   }
 
+  async getPostById(postId: string) {
+    const post = await this.postModel
+      .findOne({ _id: postId, isActive: true })
+      .populate('clubId', 'fullName avatarUrl category rating')
+      .exec();
+
+    if (!post) {
+      throw new NotFoundException('Không tìm thấy bài viết');
+    }
+
+    return post;
+  }
+
+  async getPostsByClub(
+    clubId: string,
+    sortBy: 'newest' | 'oldest' | 'popular' = 'newest',
+    limit: number = 20,
+    skip: number = 0,
+  ) {
+    return this.getAllPosts(clubId, sortBy, limit, skip);
+  }
+
+  async updatePost(clubId: string, postId: string, updateDto: UpdatePostDto) {
+    const post = await this.postModel.findById(postId);
+
+    if (!post) {
+      throw new NotFoundException('Không tìm thấy bài viết');
+    }
+
+    if (post.clubId.toString() !== clubId) {
+      throw new ForbiddenException('Bạn không có quyền chỉnh sửa bài viết này');
+    }
+
+    if (!post.isActive) {
+      throw new BadRequestException('Không thể chỉnh sửa bài viết đã xóa');
+    }
+
+    // Update fields
+    if (updateDto.title) post.title = updateDto.title;
+    if (updateDto.content) post.content = updateDto.content;
+    if (updateDto.images !== undefined) post.images = updateDto.images;
+
+    await post.save();
+
+    // Update title in club's posts array if title changed
+    if (updateDto.title) {
+      await this.updateClubPostTitle(clubId, postId, updateDto.title);
+    }
+
+    return {
+      message: 'Cập nhật bài viết thành công',
+      post,
+    };
+  }
+
+  async deletePost(clubId: string, postId: string) {
+    const post = await this.postModel.findById(postId);
+
+    if (!post) {
+      throw new NotFoundException('Không tìm thấy bài viết');
+    }
+
+    if (post.clubId.toString() !== clubId) {
+      throw new ForbiddenException('Bạn không có quyền xóa bài viết này');
+    }
+
+    // Soft delete
+    post.isActive = false;
+    post.deletedAt = new Date();
+    await post.save();
+
+    return {
+      message: 'Xóa bài viết thành công',
+    };
+  }
+
+  async restorePost(clubId: string, postId: string) {
+    const post = await this.postModel.findById(postId);
+
+    if (!post) {
+      throw new NotFoundException('Không tìm thấy bài viết');
+    }
+
+    if (post.clubId.toString() !== clubId) {
+      throw new ForbiddenException('Bạn không có quyền khôi phục bài viết này');
+    }
+
+    post.isActive = true;
+    post.deletedAt = undefined;
+    await post.save();
+
+    return {
+      message: 'Khôi phục bài viết thành công',
+      post,
+    };
+  }
+  // Like post
+  async likePost(userId: string, postId: string) {
+    const post = await this.postModel.findOne({ _id: postId, isActive: true });
+
+    if (!post) {
+      throw new NotFoundException('Không tìm thấy bài viết');
+    }
+
+    // Check if already liked
+    const alreadyLiked = post.likedBy.some(
+      (like) => like.userId.toString() === userId,
+    );
+
+    if (alreadyLiked) {
+      throw new BadRequestException('Bạn đã thích bài viết này rồi');
+    }
+
+    // Add like
+    post.likedBy.push({
+      userId: new Types.ObjectId(userId),
+      likedAt: new Date(),
+    });
+    post.like = post.likedBy.length;
+    await post.save();
+
+    return {
+      message: 'Đã thích bài viết',
+      totalLikes: post.like,
+    };
+  }
+
+  // Unlike post
+  async unlikePost(userId: string, postId: string) {
+    const post = await this.postModel.findOne({ _id: postId, isActive: true });
+
+    if (!post) {
+      throw new NotFoundException('Không tìm thấy bài viết');
+    }
+
+    // Check if not liked yet
+    const likeIndex = post.likedBy.findIndex(
+      (like) => like.userId.toString() === userId,
+    );
+
+    if (likeIndex === -1) {
+      throw new BadRequestException('Bạn chưa thích bài viết này');
+    }
+
+    // Remove like
+    post.likedBy.splice(likeIndex, 1);
+    post.like = post.likedBy.length;
+    await post.save();
+
+    return {
+      message: 'Đã bỏ thích bài viết',
+      totalLikes: post.like,
+    };
+  }
   async checkUserLiked(userId: string, postId: string): Promise<boolean> {
     const post = await this.postModel.findById(postId);
     if (!post) return false;
 
     return post.likedBy.some((like) => like.userId.toString() === userId);
+  }
+
+  // Get club's deleted posts (for club owner)
+  async getDeletedPosts(clubId: string) {
+    const club = await this.userModel.findById(clubId);
+    if (!club || club.role !== Role.CLUB) {
+      throw new ForbiddenException('Chỉ câu lạc bộ mới có thể xem bài đã xóa');
+    }
+
+    const posts = await this.postModel
+      .find({ clubId: new Types.ObjectId(clubId), isActive: false })
+      .sort({ deletedAt: -1 })
+      .exec();
+
+    return {
+      total: posts.length,
+      posts,
+    };
+  }
+
+  private async updateClubPostTitle(
+    clubId: string,
+    postId: string,
+    newTitle: string,
+  ) {
+    const club = await this.userModel.findById(clubId);
+    if (!club || !club.posts) return;
+
+    const postIndex = club.posts.findIndex(
+      (p) => p.postId.toString() === postId,
+    );
+
+    if (postIndex !== -1) {
+      club.posts[postIndex].title = newTitle;
+      await club.save();
+    }
   }
   // Get posts with user's like status
   async getPostsWithLikeStatus(
