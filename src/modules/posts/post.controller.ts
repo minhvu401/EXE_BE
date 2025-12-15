@@ -2,9 +2,12 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
+  Param,
   ParseIntPipe,
   Post,
+  Patch,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -23,6 +26,7 @@ import { Role } from '../auth/enum/role.enum';
 import { CurrentUser } from '../auth/decorators/currentUser.decorator';
 import type { UserPayload } from '../auth/interface/user-payload.interface';
 import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 
 @ApiTags('Posts')
 @Controller('posts')
@@ -87,5 +91,93 @@ export class PostController {
       limit,
       skip,
     );
+  }
+
+  @Get('club/:clubId')
+  @ApiOperation({ summary: 'Lấy danh sách bài viết của câu lạc bộ' })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    enum: ['newest', 'oldest', 'popular'],
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'skip', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Lấy danh sách thành công' })
+  async getPostsByClub(
+    @CurrentUser() user: UserPayload,
+    @Param('clubId') clubId: string,
+    @Query('sortBy') sortBy: 'newest' | 'oldest' | 'popular' = 'newest',
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number = 0,
+  ) {
+    return this.postService.getPostsWithLikeStatus(
+      user.sub,
+      clubId,
+      sortBy,
+      limit,
+      skip,
+    );
+  }
+
+  @Get('deleted')
+  @Roles(Role.CLUB)
+  @ApiOperation({ summary: 'Xem danh sách bài viết đã xóa (Club only)' })
+  @ApiResponse({ status: 200, description: 'Lấy danh sách thành công' })
+  async getDeletedPosts(@CurrentUser() user: UserPayload) {
+    return this.postService.getDeletedPosts(user.sub);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Xem chi tiết bài viết' })
+  @ApiResponse({ status: 200, description: 'Lấy thông tin thành công' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy bài viết' })
+  async getPostById(@Param('id') id: string) {
+    return this.postService.getPostById(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.CLUB)
+  @ApiOperation({ summary: 'Cập nhật bài viết (Club owner only)' })
+  @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
+  @ApiResponse({ status: 403, description: 'Không có quyền chỉnh sửa' })
+  async updatePost(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @Body() updateDto: UpdatePostDto,
+  ) {
+    return this.postService.updatePost(user.sub, id, updateDto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.CLUB)
+  @ApiOperation({ summary: 'Xóa bài viết (Soft delete - Club owner only)' })
+  @ApiResponse({ status: 200, description: 'Xóa thành công' })
+  @ApiResponse({ status: 403, description: 'Không có quyền xóa' })
+  async deletePost(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.postService.deletePost(user.sub, id);
+  }
+
+  @Patch(':id/restore')
+  @Roles(Role.CLUB)
+  @ApiOperation({ summary: 'Khôi phục bài viết đã xóa (Club owner only)' })
+  @ApiResponse({ status: 200, description: 'Khôi phục thành công' })
+  async restorePost(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.postService.restorePost(user.sub, id);
+  }
+
+  @Post(':id/like')
+  @ApiOperation({ summary: 'Thích bài viết' })
+  @ApiResponse({ status: 200, description: 'Đã thích bài viết' })
+  @ApiResponse({ status: 400, description: 'Đã thích rồi' })
+  async likePost(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.postService.likePost(user.sub, id);
+  }
+
+  @Delete(':id/unlike')
+  @ApiOperation({ summary: 'Bỏ thích bài viết' })
+  @ApiResponse({ status: 200, description: 'Đã bỏ thích bài viết' })
+  @ApiResponse({ status: 400, description: 'Chưa thích bài viết này' })
+  async unlikePost(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.postService.unlikePost(user.sub, id);
   }
 }
