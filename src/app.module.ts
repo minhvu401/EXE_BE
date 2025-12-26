@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/auth/user.module';
 import { ApplicationModule } from './modules/applications/application.module';
 import { PostModule } from './modules/posts/post.module';
+import { EventModule } from './modules/event/event.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { PostModule } from './modules/posts/post.module';
     }),
     AuthModule,
     ApplicationModule,
+    EventModule,
     UserModule,
     PostModule,
   ],

@@ -1,4 +1,12 @@
-import { Controller, Body, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Body,
+  Get,
+  Param,
+  Patch,
+  UseGuards,
+  Delete,
+} from '@nestjs/common';
 import { CurrentUser } from './decorators/currentUser.decorator';
 import type { UserPayload } from './interface/user-payload.interface';
 import { Roles } from './decorators/role.decorator';
@@ -108,6 +116,20 @@ export class UserController {
   ) {
     const isAdmin = user.role === Role.ADMIN;
     return this.userService.deactivateUser(id, user.sub, isAdmin);
+  }
+
+  @Delete(':id/deactivate')
+  @ApiBearerAuth('bearer')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Vô hiệu hóa tài khoản người dùng (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Vô hiệu hóa thành công' })
+  @ApiResponse({ status: 403, description: 'Chỉ ADMIN mới có quyền truy cập' })
+  async adminDeactivateUser(
+    @Param('id') id: string,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.userService.deactivateUser(id, user.sub, true);
   }
 
   @Patch(':id/reactivate')
