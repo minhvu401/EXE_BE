@@ -154,6 +154,7 @@ export class PostService {
     if (updateDto.title) post.title = updateDto.title;
     if (updateDto.content) post.content = updateDto.content;
     if (updateDto.images !== undefined) post.images = updateDto.images;
+    if (updateDto.tags !== undefined) post.tags = updateDto.tags;
 
     await post.save();
 
@@ -186,6 +187,36 @@ export class PostService {
 
     return {
       message: 'Xóa bài viết thành công',
+    };
+  }
+
+  async hardDeletePost(clubId: string, postId: string) {
+    const post = await this.postModel.findById(postId);
+
+    if (!post) {
+      throw new NotFoundException('Không tìm thấy bài viết');
+    }
+
+    if (post.clubId.toString() !== clubId) {
+      throw new ForbiddenException('Bạn không có quyền xóa bài viết này');
+    }
+
+    if (post.isActive) {
+      throw new BadRequestException(
+        'Chỉ có thể xóa vĩnh viễn các bài viết đã được soft delete',
+      );
+    }
+
+    // Xóa bài viết khỏi mảng posts trong User collection
+    await this.userModel.findByIdAndUpdate(clubId, {
+      $pull: { posts: { postId: new Types.ObjectId(postId) } },
+    });
+
+    // Xóa vĩnh viễn bài viết khỏi database
+    await this.postModel.findByIdAndDelete(postId);
+
+    return {
+      message: 'Xóa vĩnh viễn bài viết thành công',
     };
   }
 
