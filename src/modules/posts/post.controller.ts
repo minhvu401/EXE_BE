@@ -165,6 +165,22 @@ export class PostController {
     return this.postService.restorePost(user.sub, id);
   }
 
+  @Delete(':id/permanent')
+  @Roles(Role.CLUB)
+  @ApiOperation({ summary: 'Xóa vĩnh viễn bài viết (Club owner only)' })
+  @ApiResponse({ status: 200, description: 'Xóa vĩnh viễn thành công' })
+  @ApiResponse({ status: 403, description: 'Không có quyền xóa vĩnh viễn' })
+  @ApiResponse({
+    status: 400,
+    description: 'Chỉ có thể xóa vĩnh viễn bài viết đã soft delete',
+  })
+  async hardDeletePost(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.postService.hardDeletePost(user.sub, id);
+  }
+
   @Post(':id/like')
   @ApiOperation({ summary: 'Thích bài viết' })
   @ApiResponse({ status: 200, description: 'Đã thích bài viết' })
