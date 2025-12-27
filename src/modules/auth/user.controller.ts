@@ -6,6 +6,9 @@ import {
   Patch,
   UseGuards,
   Delete,
+  Post,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { CurrentUser } from './decorators/currentUser.decorator';
 import type { UserPayload } from './interface/user-payload.interface';
@@ -20,10 +23,14 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from './guards/jwt.guard';
 import { RolesGuard } from './guards/roles.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadAvatarDto } from 'src/upload/dto/upload-avatar.dto';
 
 @ApiTags('User Management')
 @Controller('users')
@@ -141,5 +148,27 @@ export class UserController {
   @ApiResponse({ status: 403, description: 'Chỉ ADMIN mới có quyền truy cập' })
   async reactivateUser(@Param('id') id: string) {
     return this.userService.reactivateUser(id);
+  }
+
+  @Post('avatar')
+  @ApiBearerAuth('bearer')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload/Update avatar' })
+  @ApiBody({ type: UploadAvatarDto })
+  async uploadAvatar(
+    @CurrentUser() user: UserPayload,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.userService.uploadAvatar(user.sub, file);
+  }
+
+  @Delete('avatar')
+  @ApiBearerAuth('bearer')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Delete avatar' })
+  async deleteAvatar(@CurrentUser() user: UserPayload) {
+    return this.userService.deleteAvatar(user.sub);
   }
 }

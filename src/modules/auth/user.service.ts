@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 // user.service.ts
 import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -12,10 +14,14 @@ import { UpdateStudentProfileDto } from './dto/update-profile.dto';
 import { UpdateClubProfileDto } from './dto/update-profile.dto';
 import { Role } from '../auth/enum/role.enum';
 import { UserPayload } from './interface/user-payload.interface';
+import { UploadService } from 'src/upload/upload.service';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<User>,
+    private uploadService: UploadService,
+  ) {}
 
   // Get user profile by ID
   async getUserProfile(userId: string) {
@@ -170,6 +176,55 @@ export class UserService {
 
     return {
       message: 'Kích hoạt lại tài khoản thành công',
+    };
+  }
+
+  async uploadAvatar(userId: string, file: Express.Multer.File) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    // Delete old avatar if exists
+    if (user.avatarUrl) {
+      await this.uploadService.deleteImage(user.avatarUrl);
+    }
+
+    // Upload new avatar
+    const avatarUrl = await this.uploadService.uploadAvatar(file);
+
+    // Update user
+    user.avatarUrl = avatarUrl;
+    await user.save();
+
+    return {
+      message: 'Cập nhật avatar thành công',
+      avatarUrl,
+    };
+  }
+
+  // Delete avatar
+  async deleteAvatar(userId: string) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    if (!user.avatarUrl) {
+      throw new BadRequestException('Người dùng chưa có avatar');
+    }
+
+    // Delete from Cloudinary
+    await this.uploadService.deleteImage(user.avatarUrl);
+
+    // Update user
+    user.avatarUrl = undefined;
+    await user.save();
+
+    return {
+      message: 'Xóa avatar thành công',
     };
   }
 }
