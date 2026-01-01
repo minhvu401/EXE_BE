@@ -40,12 +40,38 @@ export class UploadService {
   private readonly MAX_POST_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
   constructor(private configService: ConfigService) {
-    // Initialize Cloudinary
+    // Initialize Cloudinary with error checking
+    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+    const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+    const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      this.logger.warn(
+        'Cloudinary configuration is missing. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.',
+      );
+    }
+
     cloudinary.config({
-      cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
-      api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
-      api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET'),
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
     });
+  }
+
+  // Ensure Cloudinary is configured before each operation
+  private ensureCloudinaryConfigured(): void {
+    const config = cloudinary.config();
+    if (!config.api_key || !config.api_secret) {
+      const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+      const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+      const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+
+      cloudinary.config({
+        cloud_name: cloudName,
+        api_key: apiKey,
+        api_secret: apiSecret,
+      });
+    }
   }
 
   // Validate image file
@@ -75,6 +101,7 @@ export class UploadService {
     maxSize: number = this.MAX_POST_IMAGE_SIZE,
   ): Promise<string> {
     this.validateImage(file, maxSize);
+    this.ensureCloudinaryConfigured();
 
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -162,6 +189,7 @@ export class UploadService {
         return;
       }
 
+      this.ensureCloudinaryConfigured();
       await cloudinary.uploader.destroy(publicId);
       this.logger.log(`Image deleted successfully: ${publicId}`);
     } catch (error) {
@@ -205,6 +233,7 @@ export class UploadService {
   // Get image info
   async getImageInfo(publicId: string): Promise<any> {
     try {
+      this.ensureCloudinaryConfigured();
       const result = await cloudinary.api.resource(publicId);
       return result;
     } catch (error) {
