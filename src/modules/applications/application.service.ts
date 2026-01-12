@@ -330,6 +330,7 @@ export class ApplicationService {
       year: user.year,
       skills: user.skills,
       interests: user.interests,
+      role: 'member',
       joinedAt: new Date(),
       isActive: true,
     };
