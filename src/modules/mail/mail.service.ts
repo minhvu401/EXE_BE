@@ -521,4 +521,180 @@ export class MailService {
       );
     }
   }
+
+  async sendMemberRemovedEmail(
+    email: string,
+    userName: string,
+    clubName: string,
+    reason: string,
+  ): Promise<void> {
+    try {
+      const mailOptions = {
+        from: `ClubVerse NoReply <${this.configService.get<string>('MAIL_FROM')}>`,
+        to: email,
+        subject: `Thông báo về tư cách thành viên tại ${clubName}`,
+        html: `
+          <div style="font-family: 'Roboto', Arial, sans-serif; padding: 30px; max-width: 600px; margin: 0 auto; background-color: #F8FAFC; border: 1px solid #E5E7EB; border-radius: 12px;">
+            <div style="text-align: center; margin-bottom: 30px; background: linear-gradient(to right, #001F3F, #4A90E2); padding: 20px; border-radius: 8px 8px 0 0; color: #FFFFFF;">
+              <h2 style="margin: 0; font-size: 24px;">⚠️ Thông Báo Quan Trọng</h2>
+            </div>
+            <p style="font-size: 16px; color: #001F3F; line-height: 1.5;">Xin chào <strong>${userName}</strong>,</p>
+            <p style="font-size: 16px; color: #001F3F; margin-bottom: 25px; line-height: 1.5;">
+              Chúng tôi rất tiếc phải thông báo rằng bạn đã bị xóa khỏi câu lạc bộ <strong style="color: #4A90E2;">${clubName}</strong>.
+            </p>
+            
+            <div style="background-color: #FFFFFF; padding: 25px; border-radius: 8px; border-left: 4px solid #DC2626; margin: 25px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+              <h3 style="color: #4A90E2; margin-top: 0; font-size: 18px;">Lý do:</h3>
+              <p style="margin: 0; color: #6B7280; font-style: italic; line-height: 1.4;">${reason}</p>
+            </div>
+
+            <p style="font-size: 15px; color: #6B7280; text-align: center; margin-top: 35px; line-height: 1.5;">
+              Nếu bạn có thắc mắc, vui lòng liên hệ trực tiếp với câu lạc bộ để được giải đáp.
+            </p>
+
+            <div style="text-align: center; font-size: 12px; color: #6B7280; border-top: 1px solid #E5E7EB; padding-top: 15px; margin-top: 35px;">
+              <p>Cần hỗ trợ? Liên hệ <a href="mailto:minhvuhoang4104@gmail.com" style="color: #4A90E2; text-decoration: none; font-weight: bold;">minhvuhoang4104@gmail.com</a></p>
+              <p>&copy; 2025 ClubVerse. All rights reserved.</p>
+            </div>
+          </div>
+        `,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Member removed email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send member removed email to ${email}`,
+        error,
+      );
+    }
+  }
+
+  async sendRoleUpdatedEmail(
+    email: string,
+    userName: string,
+    clubName: string,
+    newRole: string,
+  ): Promise<void> {
+    try {
+      const roleNames = {
+        admin: 'Quản trị viên',
+        moderator: 'Điều hành viên',
+        member: 'Thành viên',
+      };
+
+      const mailOptions = {
+        from: `ClubVerse NoReply <${this.configService.get<string>('MAIL_FROM')}>`,
+        to: email,
+        subject: `Cập nhật vai trò tại ${clubName}`,
+        html: `
+          <div style="font-family: 'Roboto', Arial, sans-serif; padding: 30px; max-width: 600px; margin: 0 auto; background-color: #F8FAFC; border: 1px solid #E5E7EB; border-radius: 12px;">
+            <div style="text-align: center; margin-bottom: 30px; background: linear-gradient(to right, #001F3F, #4A90E2); padding: 20px; border-radius: 8px 8px 0 0; color: #FFFFFF;">
+              <h2 style="margin: 0; font-size: 24px;">🎉 Cập Nhật Vai Trò</h2>
+            </div>
+            <p style="font-size: 16px; color: #001F3F; line-height: 1.5;">Xin chào <strong>${userName}</strong>,</p>
+            <p style="font-size: 16px; color: #001F3F; margin-bottom: 25px; line-height: 1.5;">
+              Vai trò của bạn tại câu lạc bộ <strong style="color: #4A90E2;">${clubName}</strong> đã được cập nhật!
+            </p>
+            
+            <div style="background-color: #FFFFFF; padding: 25px; border-radius: 8px; text-align: center; margin: 25px 0; border-left: 4px solid #10B981; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+              <h3 style="color: #4A90E2; margin-top: 0; font-size: 20px;">✨ Vai Trò Mới</h3>
+              <p style="margin: 12px 0; font-size: 18px; color: #059669; font-weight: bold;">
+                ${roleNames[newRole] || newRole}
+              </p>
+            </div>
+
+            <p style="font-size: 15px; color: #6B7280; text-align: center; margin-top: 35px; line-height: 1.5;">
+              Chúc mừng bạn! 🎊
+            </p>
+
+            <div style="text-align: center; font-size: 12px; color: #6B7280; border-top: 1px solid #E5E7EB; padding-top: 15px; margin-top: 35px;">
+              <p>Cần hỗ trợ? Liên hệ <a href="mailto:minhvuhoang4104@gmail.com" style="color: #4A90E2; text-decoration: none; font-weight: bold;">minhvuhoang4104@gmail.com</a></p>
+              <p>&copy; 2025 ClubVerse. All rights reserved.</p>
+            </div>
+          </div>
+        `,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Role updated email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send role updated email to ${email}`, error);
+    }
+  }
+
+  async sendMemberActionApprovalEmail(
+    adminEmail: string,
+    adminName: string,
+    clubName: string,
+    actionType: string,
+    memberName: string,
+    actionDetails: string,
+    approvalToken: string,
+    approvalLink: string,
+  ): Promise<void> {
+    try {
+      const actionTitles = {
+        update_member: 'Cập Nhật Thành Viên',
+        remove_member: 'Xóa Thành Viên',
+        update_role: 'Cập Nhật Vai Trò',
+      };
+
+      const mailOptions = {
+        from: `ClubVerse NoReply <${this.configService.get<string>('MAIL_FROM')}>`,
+        to: adminEmail,
+        subject: `⚠️ Yêu Cầu Xác Nhận: ${actionTitles[actionType] || actionType} - ${clubName}`,
+        html: `
+          <div style="font-family: 'Roboto', Arial, sans-serif; padding: 30px; max-width: 600px; margin: 0 auto; background-color: #F8FAFC; border: 1px solid #E5E7EB; border-radius: 12px;">
+            <div style="text-align: center; margin-bottom: 30px; background: linear-gradient(to right, #001F3F, #4A90E2); padding: 20px; border-radius: 8px 8px 0 0; color: #FFFFFF;">
+              <h2 style="margin: 0; font-size: 24px;">⚠️ Yêu Cầu Xác Nhận</h2>
+            </div>
+            <p style="font-size: 16px; color: #001F3F; line-height: 1.5;">Xin chào <strong>${adminName}</strong>,</p>
+            <p style="font-size: 16px; color: #001F3F; margin-bottom: 25px; line-height: 1.5;">
+              Có một yêu cầu <strong style="color: #4A90E2;">${actionTitles[actionType]}</strong> cần xác nhận từ câu lạc bộ <strong style="color: #4A90E2;">${clubName}</strong>.
+            </p>
+            
+            <div style="background-color: #FFFFFF; padding: 25px; border-radius: 8px; border-left: 4px solid #F59E0B; margin: 25px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+              <h3 style="color: #4A90E2; margin-top: 0; font-size: 18px;">📋 Chi Tiết Hành Động</h3>
+              <p style="margin: 12px 0; color: #001F3F;"><strong>Thành viên:</strong> ${memberName}</p>
+              <p style="margin: 12px 0; color: #001F3F;"><strong>Hành động:</strong> ${actionTitles[actionType]}</p>
+              <div style="background-color: #F9FAFB; padding: 15px; border-radius: 4px; margin-top: 12px;">
+                <p style="margin: 0; color: #6B7280; line-height: 1.5;">${actionDetails}</p>
+              </div>
+            </div>
+
+            <div style="background-color: #FEF2F2; padding: 18px; border-radius: 8px; border-left: 4px solid #EF4444; margin: 25px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+              <p style="margin: 0; font-size: 14px; color: #991B1B; line-height: 1.4;">
+                ⏰ <strong>Lưu ý:</strong> Yêu cầu này sẽ hết hạn trong 24 giờ. Nếu có từ 2 admin trở lên, ai xác nhận trước sẽ thực hiện hành động này.
+              </p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${approvalLink}" style="display: inline-block; background: linear-gradient(to right, #10B981, #059669); color: #FFFFFF; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                ✅ Xác Nhận Yêu Cầu
+              </a>
+            </div>
+
+            <p style="font-size: 13px; color: #6B7280; text-align: center; margin: 20px 0;">
+              Hoặc copy link này: <br>
+              <code style="background-color: #F3F4F6; padding: 8px 12px; border-radius: 4px; font-size: 12px; word-break: break-all;">${approvalLink}</code>
+            </p>
+
+            <div style="text-align: center; font-size: 12px; color: #6B7280; border-top: 1px solid #E5E7EB; padding-top: 15px; margin-top: 35px;">
+              <p>Cần hỗ trợ? Liên hệ <a href="mailto:minhvuhoang4104@gmail.com" style="color: #4A90E2; text-decoration: none; font-weight: bold;">minhvuhoang4104@gmail.com</a></p>
+              <p>&copy; 2025 ClubVerse. All rights reserved.</p>
+            </div>
+          </div>
+        `,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Action approval email sent to ${adminEmail}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send action approval email to ${adminEmail}`,
+        error,
+      );
+    }
+  }
 }

@@ -12,6 +12,7 @@ import { UserModule } from './modules/auth/user.module';
 import { ApplicationModule } from './modules/applications/application.module';
 import { PostModule } from './modules/posts/post.module';
 import { EventModule } from './modules/event/event.module';
+import { ClubMemberModule } from './modules/clubmems/clubmems.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { EventModule } from './modules/event/event.module';
     }),
     AuthModule,
     ApplicationModule,
+    ClubMemberModule,
     EventModule,
     UserModule,
     PostModule,

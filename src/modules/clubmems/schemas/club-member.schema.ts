@@ -20,9 +20,16 @@ export class ClubMember extends Document {
         year: Number,
         skills: [String],
         interests: [String],
+        role: {
+          type: String,
+          enum: ['admin', 'moderator', 'member'],
+          default: 'member',
+        },
         joinedAt: { type: Date, default: Date.now },
         isActive: { type: Boolean, default: true },
         outDate: Date,
+        removeReason: String,
+        removedBy: { type: Types.ObjectId, ref: 'User' },
       },
     ],
     default: [],
@@ -38,9 +45,12 @@ export class ClubMember extends Document {
     year?: number;
     skills?: string[];
     interests?: string[];
+    role?: string;
     joinedAt: Date;
     isActive: boolean;
     outDate?: Date;
+    removeReason?: string;
+    removedBy?: Types.ObjectId;
   }[];
 
   @Prop({ type: Number, default: 0 })
@@ -54,3 +64,5 @@ export const ClubMemberSchema = SchemaFactory.createForClass(ClubMember);
 
 // Index
 ClubMemberSchema.index({ clubId: 1 });
+ClubMemberSchema.index({ 'users.userId': 1 });
+ClubMemberSchema.index({ 'users.isActive': 1 });
