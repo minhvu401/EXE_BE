@@ -105,6 +105,25 @@ export class EventController {
     return this.eventService.getDeletedEvents(user.sub);
   }
 
+  @Get('club/:clubId')
+  @ApiOperation({ summary: 'Lấy danh sách sự kiện theo club ID' })
+  @ApiQuery({
+    name: 'filter',
+    required: false,
+    enum: ['all', 'upcoming', 'past', 'ongoing'],
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'skip', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Lấy danh sách thành công' })
+  async getEventsByClubId(
+    @Param('clubId') clubId: string,
+    @Query('filter') filter: 'all' | 'upcoming' | 'past' | 'ongoing' = 'all',
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number = 0,
+  ) {
+    return this.eventService.getAllEvents(filter, clubId, limit, skip);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Xem chi tiết sự kiện' })
   @ApiResponse({ status: 200, description: 'Lấy thông tin thành công' })
