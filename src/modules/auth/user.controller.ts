@@ -31,16 +31,24 @@ import { JwtAuthGuard } from './guards/jwt.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadAvatarDto } from 'src/upload/dto/upload-avatar.dto';
+import { UserProfileResponseDto } from './dto/user-profile-response.dto';
 
 @ApiTags('User Management')
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
   @Get('profile')
-  @ApiOperation({ summary: 'Lấy thông tin profile của người dùng hiện tại' })
+  @ApiOperation({
+    summary:
+      'Lấy thông tin profile của người dùng hiện tại (bao gồm danh sách clubs đã tham gia)',
+  })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('bearer')
-  @ApiResponse({ status: 200, description: 'Lấy thông tin thành công' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lấy thông tin thành công',
+    type: UserProfileResponseDto,
+  })
   async getMyProfile(@CurrentUser() user: UserPayload) {
     return this.userService.getUserProfile(user.sub);
   }
