@@ -305,7 +305,7 @@ export class PostService {
     return post.likedBy.some((like) => like.userId.toString() === userId);
   }
 
-  // Get club's deleted posts (for club owner)
+  // Get club's deleted posts (for club account)
   async getDeletedPosts(clubId: string) {
     const club = await this.userModel.findById(clubId);
     if (!club || club.role !== Role.CLUB) {
@@ -368,3 +368,5 @@ export class PostService {
     };
   }
 }
+
+

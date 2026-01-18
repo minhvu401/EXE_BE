@@ -5,10 +5,17 @@ import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { User, UserSchema } from '../auth/schemas/user.schema';
 import { UploadModule } from 'src/upload/upload.module';
+import {
+  ClubMember,
+  ClubMemberSchema,
+} from '../clubmems/schemas/club-member.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: ClubMember.name, schema: ClubMemberSchema },
+    ]),
     UploadModule,
   ],
   controllers: [UserController],

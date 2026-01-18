@@ -137,7 +137,7 @@ export class PostController {
 
   @Patch(':id')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Cập nhật bài viết (Club owner only)' })
+  @ApiOperation({ summary: 'Cập nhật bài viết (club account only)' })
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
   @ApiResponse({ status: 403, description: 'Không có quyền chỉnh sửa' })
   async updatePost(
@@ -150,7 +150,7 @@ export class PostController {
 
   @Delete(':id')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Xóa bài viết (Soft delete - Club owner only)' })
+  @ApiOperation({ summary: 'Xóa bài viết (Soft delete - club account only)' })
   @ApiResponse({ status: 200, description: 'Xóa thành công' })
   @ApiResponse({ status: 403, description: 'Không có quyền xóa' })
   async deletePost(@CurrentUser() user: UserPayload, @Param('id') id: string) {
@@ -159,7 +159,7 @@ export class PostController {
 
   @Patch(':id/restore')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Khôi phục bài viết đã xóa (Club owner only)' })
+  @ApiOperation({ summary: 'Khôi phục bài viết đã xóa (club account only)' })
   @ApiResponse({ status: 200, description: 'Khôi phục thành công' })
   async restorePost(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.postService.restorePost(user.sub, id);
@@ -167,7 +167,7 @@ export class PostController {
 
   @Delete(':id/permanent')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Xóa vĩnh viễn bài viết (Club owner only)' })
+  @ApiOperation({ summary: 'Xóa vĩnh viễn bài viết (club account only)' })
   @ApiResponse({ status: 200, description: 'Xóa vĩnh viễn thành công' })
   @ApiResponse({ status: 403, description: 'Không có quyền xóa vĩnh viễn' })
   @ApiResponse({
@@ -197,3 +197,5 @@ export class PostController {
     return this.postService.unlikePost(user.sub, id);
   }
 }
+
+

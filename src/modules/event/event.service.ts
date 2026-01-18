@@ -142,7 +142,7 @@ export class EventService {
     };
   }
 
-  // Update event (Club owner only)
+  // Update event (club account only)
   async updateEvent(
     clubId: string,
     eventId: string,
@@ -195,7 +195,7 @@ export class EventService {
     };
   }
 
-  // Soft delete event (Club owner only)
+  // Soft delete event (club account only)
   async softDeleteEvent(clubId: string, eventId: string) {
     const event = await this.eventModel.findById(eventId);
 
@@ -217,7 +217,7 @@ export class EventService {
     };
   }
 
-  // Hard delete event (Club owner only)
+  // Hard delete event (club account only)
   async hardDeleteEvent(clubId: string, eventId: string) {
     const event = await this.eventModel.findById(eventId);
 
@@ -236,7 +236,7 @@ export class EventService {
     };
   }
 
-  // Restore soft deleted event (Club owner only)
+  // Restore soft deleted event (club account only)
   async restoreEvent(clubId: string, eventId: string) {
     const event = await this.eventModel.findById(eventId);
 
@@ -259,7 +259,7 @@ export class EventService {
     };
   }
 
-  // Get deleted events (Club owner only)
+  // Get deleted events (club account only)
   async getDeletedEvents(clubId: string) {
     const club = await this.userModel.findById(clubId);
     if (!club || club.role !== Role.CLUB) {
@@ -477,7 +477,7 @@ export class EventService {
     };
   }
 
-  // Get event participants (Club owner only)
+  // Get event participants (club account only)
   async getEventParticipants(clubId: string, eventId: string) {
     const event = await this.eventModel.findById(eventId);
 
@@ -499,7 +499,7 @@ export class EventService {
     };
   }
 
-  // Check-in participant (Club owner only)
+  // Check-in participant (club account only)
   async checkInParticipant(
     clubId: string,
     eventId: string,
@@ -543,7 +543,7 @@ export class EventService {
     };
   }
 
-  // Undo check-in (Club owner only)
+  // Undo check-in (club account only)
   async undoCheckIn(
     clubId: string,
     eventId: string,

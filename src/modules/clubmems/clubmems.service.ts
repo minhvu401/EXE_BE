@@ -165,7 +165,7 @@ export class ClubMemberService {
 
     const member = clubMembers.users[memberIndex];
 
-    // Cannot remove yourself (club owner)
+    // Cannot remove yourself (club account)
     if (removeDto.userId === clubId) {
       throw new BadRequestException(
         'Không thể tự xóa bản thân khỏi câu lạc bộ',
@@ -230,7 +230,7 @@ export class ClubMemberService {
 
     const member = clubMembers.users[memberIndex];
 
-    // Cannot update yourself (club owner)
+    // Cannot update yourself (club account)
     if (updateDto.userId === clubId) {
       throw new BadRequestException(
         'Không thể thay đổi vai trò của chính mình',
@@ -833,7 +833,7 @@ export class ClubMemberService {
       throw new NotFoundException('Không tìm thấy câu lạc bộ');
     }
 
-    // Verify user is club owner or admin member
+    // Verify user is club account or club resident
     const clubMembers = await this.clubMemberModel.findOne({
       clubId: new Types.ObjectId(clubId),
     });
@@ -842,10 +842,10 @@ export class ClubMemberService {
       throw new NotFoundException('Không tìm thấy dữ liệu thành viên');
     }
 
-    // Check if user is club owner
+    // Check if user is club account
     const isClubOwner = userId === clubId;
 
-    // Check if user is admin member
+    // Check if user is club resident
     const isAdminMember = clubMembers.users.some(
       (m) => m.userId.toString() === userId && m.role === MemberRole.ADMIN,
     );

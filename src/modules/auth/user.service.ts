@@ -10,6 +10,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from '../auth/schemas/user.schema';
+import { ClubMember } from '../clubmems/schemas/club-member.schema';
 import { UpdateStudentProfileDto } from './dto/update-profile.dto';
 import { UpdateClubProfileDto } from './dto/update-profile.dto';
 import { Role } from '../auth/enum/role.enum';
@@ -20,6 +21,7 @@ import { UploadService } from 'src/upload/upload.service';
 export class UserService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(ClubMember.name) private clubMemberModel: Model<ClubMember>,
     private uploadService: UploadService,
   ) {}
 
@@ -34,7 +36,45 @@ export class UserService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
-    return user;
+    // Fetch clubs that this user has joined
+    const clubsJoined: any[] = [];
+
+    // Get all club members records
+    const allClubMembers = await this.clubMemberModel.find().exec();
+
+    // Search for this user in each club's members list
+    for (const clubRecord of allClubMembers) {
+      const userInClub = clubRecord.users?.find(
+        (member: any) => member.userId.toString() === userId,
+      );
+
+      if (userInClub && userInClub.isActive) {
+        // Get club information
+        const club = await this.userModel
+          .findById(clubRecord.clubId)
+          .select('-password')
+          .exec();
+
+        if (club) {
+          clubsJoined.push({
+            clubId: clubRecord.clubId.toString(),
+            clubName: club.fullName,
+            category: club.category,
+            clubAvatarUrl: club.avatarUrl,
+            role: userInClub.role || 'member',
+            joinedAt: userInClub.joinedAt,
+            isActive: userInClub.isActive,
+            outDate: userInClub.outDate,
+          });
+        }
+      }
+    }
+
+    // Convert user to object and add clubs information
+    const userObject = user.toObject();
+    (userObject as any).clubsJoined = clubsJoined;
+
+    return userObject;
   }
 
   // Update Student Profile

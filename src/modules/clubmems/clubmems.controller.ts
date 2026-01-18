@@ -34,24 +34,12 @@ import { GetMembersQueryDto } from './dto/get-members.dto';
 export class ClubMemberController {
   constructor(private readonly clubMemberService: ClubMemberService) {}
 
-  @Get('approve-action/:token')
-  @ApiOperation({ summary: 'Xác nhận yêu cầu hành động qua link email' })
-  @ApiResponse({ status: 200, description: 'Yêu cầu đã được xác nhận' })
-  @ApiResponse({
-    status: 400,
-    description: 'Token không hợp lệ hoặc đã hết hạn',
-  })
-  @ApiResponse({ status: 403, description: 'Không có quyền xác nhận' })
-  async approvePendingAction(@Param('token') token: string) {
-    return this.clubMemberService.approvePendingActionByToken(token);
-  }
-
   @Get('club/:clubId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @Roles(Role.CLUB, Role.ADMIN)
+  @Roles(Role.CLUB)
   @ApiOperation({
-    summary: 'Xem danh sách thành viên của club (Club owner/Admin)',
+    summary: 'Xem danh sách thành viên của club (club account/club resident)',
   })
   @ApiQuery({
     name: 'status',
@@ -75,8 +63,10 @@ export class ClubMemberController {
   @Get('club/:clubId/member/:memberId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @Roles(Role.CLUB, Role.ADMIN)
-  @ApiOperation({ summary: 'Xem chi tiết thành viên (Club owner/Admin)' })
+  @Roles(Role.CLUB)
+  @ApiOperation({
+    summary: 'Xem chi tiết thành viên (club account/club resident)',
+  })
   @ApiResponse({ status: 200, description: 'Lấy thông tin thành công' })
   async getMemberDetails(
     @Param('clubId') clubId: string,
@@ -88,14 +78,14 @@ export class ClubMemberController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Xóa thành viên khỏi club (Club owner only)' })
+  @ApiOperation({ summary: 'Xóa thành viên khỏi club (club account only)' })
   @ApiResponse({ status: 200, description: 'Xóa thành viên thành công' })
   async removeMember(
     @CurrentUser() user: UserPayload,
     @Param('clubId') clubId: string,
     @Body() removeDto: RemoveMemberDto,
   ) {
-    // Validate that the user is the club owner
+    // Validate that the user is the club account
     if (user.sub !== clubId) {
       throw new ForbiddenException('Chỉ chủ club mới có thể xóa thành viên');
     }
@@ -105,14 +95,14 @@ export class ClubMemberController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Cập nhật vai trò thành viên (Club owner only)' })
+  @ApiOperation({ summary: 'Cập nhật vai trò thành viên (club account only)' })
   @ApiResponse({ status: 200, description: 'Cập nhật vai trò thành công' })
   async updateMemberRole(
     @CurrentUser() user: UserPayload,
     @Param('clubId') clubId: string,
     @Body() updateDto: UpdateMemberRoleDto,
   ) {
-    // Validate that the user is the club owner
+    // Validate that the user is the club account
     if (user.sub !== clubId) {
       throw new ForbiddenException('Chỉ chủ club mới có thể cập nhật vai trò');
     }
@@ -121,8 +111,10 @@ export class ClubMemberController {
   @Get('club/:clubId/statistics')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @Roles(Role.CLUB, Role.ADMIN)
-  @ApiOperation({ summary: 'Xem thống kê thành viên (Club owner/Admin)' })
+  @Roles(Role.CLUB)
+  @ApiOperation({
+    summary: 'Xem thống kê thành viên (club account/club resident)',
+  })
   @ApiResponse({ status: 200, description: 'Lấy thống kê thành công' })
   async getMemberStatistics(@Param('clubId') clubId: string) {
     return this.clubMemberService.getMemberStatistics(clubId);
@@ -131,7 +123,7 @@ export class ClubMemberController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Export danh sách thành viên (Club owner only)' })
+  @ApiOperation({ summary: 'Export danh sách thành viên (club account only)' })
   @ApiQuery({
     name: 'status',
     required: false,
@@ -143,7 +135,7 @@ export class ClubMemberController {
     @Param('clubId') clubId: string,
     @Query('status') status: 'active' | 'inactive' | 'all' = 'all',
   ) {
-    // Validate that the user is the club owner
+    // Validate that the user is the club account
     if (user.sub !== clubId) {
       throw new ForbiddenException('Chỉ chủ club mới có thể export danh sách');
     }
@@ -173,7 +165,7 @@ export class ClubMemberController {
   @ApiBearerAuth()
   @Roles(Role.USER)
   @ApiOperation({
-    summary: 'Xem danh sách yêu cầu chờ xác nhận (Club owner/Admin)',
+    summary: 'Xem danh sách yêu cầu chờ xác nhận (club account/club resident)',
   })
   @ApiResponse({ status: 200, description: 'Lấy danh sách thành công' })
   async getPendingActions(
@@ -187,7 +179,7 @@ export class ClubMemberController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Roles(Role.USER)
-  @ApiOperation({ summary: 'Xác nhận yêu cầu hành động (Admin member only)' })
+  @ApiOperation({ summary: 'Xác nhận yêu cầu hành động (club resident only)' })
   @ApiResponse({ status: 200, description: 'Yêu cầu đã được xác nhận' })
   @ApiResponse({ status: 404, description: 'Yêu cầu không tồn tại' })
   @ApiResponse({ status: 403, description: 'Không có quyền xác nhận' })
@@ -205,7 +197,7 @@ export class ClubMemberController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Roles(Role.USER)
-  @ApiOperation({ summary: 'Từ chối yêu cầu hành động (Admin member only)' })
+  @ApiOperation({ summary: 'Từ chối yêu cầu hành động (club resident only)' })
   @ApiResponse({ status: 200, description: 'Yêu cầu đã bị từ chối' })
   @ApiResponse({ status: 404, description: 'Yêu cầu không tồn tại' })
   @ApiResponse({ status: 403, description: 'Không có quyền từ chối' })

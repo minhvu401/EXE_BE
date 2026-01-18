@@ -134,7 +134,7 @@ export class EventController {
 
   @Get(':id/participants')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Xem danh sách người tham gia (Club owner only)' })
+  @ApiOperation({ summary: 'Xem danh sách người tham gia (club account only)' })
   @ApiResponse({ status: 200, description: 'Lấy danh sách thành công' })
   async getEventParticipants(
     @CurrentUser() user: UserPayload,
@@ -145,7 +145,7 @@ export class EventController {
 
   @Patch(':id')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Cập nhật sự kiện (Club owner only)' })
+  @ApiOperation({ summary: 'Cập nhật sự kiện (club account only)' })
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
   async updateEvent(
     @CurrentUser() user: UserPayload,
@@ -157,7 +157,7 @@ export class EventController {
 
   @Delete(':id/soft')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Xóa sự kiện (Soft delete - Club owner only)' })
+  @ApiOperation({ summary: 'Xóa sự kiện (Soft delete - club account only)' })
   @ApiResponse({ status: 200, description: 'Xóa thành công' })
   async softDeleteEvent(
     @CurrentUser() user: UserPayload,
@@ -169,7 +169,7 @@ export class EventController {
   @Delete(':id/hard')
   @Roles(Role.CLUB)
   @ApiOperation({
-    summary: 'Xóa vĩnh viễn sự kiện (Hard delete - Club owner only)',
+    summary: 'Xóa vĩnh viễn sự kiện (Hard delete - club account only)',
   })
   @ApiResponse({ status: 200, description: 'Xóa vĩnh viễn thành công' })
   async hardDeleteEvent(
@@ -181,7 +181,7 @@ export class EventController {
 
   @Patch(':id/restore')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Khôi phục sự kiện đã xóa (Club owner only)' })
+  @ApiOperation({ summary: 'Khôi phục sự kiện đã xóa (club account only)' })
   @ApiResponse({ status: 200, description: 'Khôi phục thành công' })
   async restoreEvent(
     @CurrentUser() user: UserPayload,
@@ -219,7 +219,7 @@ export class EventController {
 
   @Post(':id/check-in/:userId')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Check-in người tham gia (Club owner only)' })
+  @ApiOperation({ summary: 'Check-in người tham gia (club account only)' })
   @ApiResponse({ status: 200, description: 'Check-in thành công' })
   async checkInParticipant(
     @CurrentUser() user: UserPayload,
@@ -231,7 +231,7 @@ export class EventController {
 
   @Delete(':id/check-in/:userId/undo')
   @Roles(Role.CLUB)
-  @ApiOperation({ summary: 'Hủy check-in (Club owner only)' })
+  @ApiOperation({ summary: 'Hủy check-in (club account only)' })
   @ApiResponse({ status: 200, description: 'Hủy check-in thành công' })
   async undoCheckIn(
     @CurrentUser() user: UserPayload,
