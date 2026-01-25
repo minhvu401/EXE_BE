@@ -13,6 +13,8 @@ import { ApplicationModule } from './modules/applications/application.module';
 import { PostModule } from './modules/posts/post.module';
 import { EventModule } from './modules/event/event.module';
 import { ClubMemberModule } from './modules/clubmems/clubmems.module';
+import { RecommendationModule } from './modules/recommendation/recommendation.module';
+import { PaymentModule } from './modules/payment/payment.module';
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { ClubMemberModule } from './modules/clubmems/clubmems.module';
     EventModule,
     UserModule,
     PostModule,
+    RecommendationModule,
+    PaymentModule,
   ],
   providers: [],
   controllers: [],

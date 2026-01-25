@@ -197,5 +197,3 @@ export class PostController {
     return this.postService.unlikePost(user.sub, id);
   }
 }
-
-
