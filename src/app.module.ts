@@ -15,6 +15,8 @@ import { EventModule } from './modules/event/event.module';
 import { ClubMemberModule } from './modules/clubmems/clubmems.module';
 import { RecommendationModule } from './modules/recommendation/recommendation.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { PaymentModule } from './modules/payment/payment.module';
     PostModule,
     RecommendationModule,
     PaymentModule,
+    NotificationModule,
+    MessagingModule,
   ],
   providers: [],
   controllers: [],
