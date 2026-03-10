@@ -10,8 +10,10 @@ import {
   Param,
   BadRequestException,
   Req,
+  Inject,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { ConfigService } from '@nestjs/config';
 import {
   ApiTags,
   ApiOperation,
@@ -26,14 +28,26 @@ import { CurrentUser } from '../auth/decorators/currentUser.decorator';
 @ApiTags('Payments')
 @Controller('payments')
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(
+    private readonly paymentService: PaymentService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * Get base URL from request
+   * Handles proxy headers for Render deployments
    */
   private getBaseUrl(request: Request): string {
-    const protocol = request.protocol;
-    const host = request.get('host');
+    // First, try to get from environment APP_URL (most reliable)
+    const appUrl = this.configService.get<string>('APP_URL');
+    if (appUrl) {
+      return appUrl;
+    }
+
+    // Fallback: Handle proxy headers (X-Forwarded-Proto, X-Forwarded-Host)
+    const protocol = request.get('X-Forwarded-Proto') || request.protocol;
+    const host = request.get('X-Forwarded-Host') || request.get('host');
+
     return `${protocol}://${host}`;
   }
 
@@ -91,23 +105,6 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   async payosWebhook(@Body() body: any) {
     return this.paymentService.handlePayOSWebhook(body);
-  }
-
-  @Get('/sepay-callback')
-  @ApiOperation({
-    summary: '[DEPRECATED] Sepay callback endpoint',
-    description: 'Nhận kết quả thanh toán từ Sepay (không còn sử dụng)',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Callback processed',
-  })
-  @HttpCode(HttpStatus.OK)
-  async sepayCallback(@Query() query: Record<string, string | string[]>) {
-    return {
-      success: false,
-      message: 'Sepay endpoint is deprecated, use PayOS instead',
-    };
   }
 
   @Get('/test-callback')

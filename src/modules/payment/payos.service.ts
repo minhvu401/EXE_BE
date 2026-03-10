@@ -97,7 +97,13 @@ export class PayOSService {
     request: PayOSPaymentLinkRequest,
   ): Promise<PayOSPaymentLinkResponse> {
     try {
-      this.logger.debug('Creating payment link:', request);
+      this.logger.debug('Creating payment link:', {
+        orderCode: request.orderCode,
+        amount: request.amount,
+        description: request.description,
+        returnUrl: request.returnUrl,
+        cancelUrl: request.cancelUrl,
+      });
 
       const url = `${this.config.apiUrl}/payment-requests`;
 
@@ -111,19 +117,70 @@ export class PayOSService {
         signature: this.generateSignature(request),
       };
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-client-id': this.config.clientId,
-          'x-api-key': this.config.apiKey,
+      this.logger.debug('PayOS request payload:', {
+        url,
+        clientId: this.config.clientId,
+        payload: {
+          ...payload,
+          signature: payload.signature.substring(0, 10) + '...',
         },
-        body: JSON.stringify(payload),
       });
 
+      let response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-client-id': this.config.clientId,
+            'x-api-key': this.config.apiKey,
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (fetchError) {
+        const errorDetails: any = {
+          message:
+            fetchError instanceof Error
+              ? fetchError.message
+              : String(fetchError),
+          url,
+          headers: {
+            'x-client-id': this.config.clientId,
+          },
+        };
+
+        // Capture detailed error info
+        if (fetchError instanceof Error) {
+          errorDetails.name = fetchError.name;
+          errorDetails.stack = fetchError.stack;
+          if ('cause' in fetchError) {
+            errorDetails.cause = fetchError.cause;
+          }
+        }
+
+        this.logger.error('PayOS Fetch Error (Network):', errorDetails);
+        throw new BadRequestException(
+          `Network error connecting to PayOS: ${errorDetails.message}`,
+        );
+      }
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`PayOS API Error: ${errorData.message}`);
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        const errorMessage = errorData.message || errorData.error || errorText;
+        this.logger.error('PayOS API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorData,
+        });
+        throw new Error(
+          `PayOS API Error (${response.status}): ${errorMessage}`,
+        );
       }
 
       const data = await response.json();
@@ -214,20 +271,25 @@ export class PayOSService {
 
   /**
    * Generate signature for payment request
-   * Signature = HMAC_SHA256(merchant_id;order_code;amount;item_count;description;cancel_url;return_url, checksum_key)
+   * Signature format: amount=X&cancelUrl=X&description=X&orderCode=X&returnUrl=X
+   * Then HMAC_SHA256 with checksum key
    */
   private generateSignature(request: PayOSPaymentLinkRequest): string {
-    const itemCount = request.items.reduce(
-      (sum, item) => sum + item.quantity,
-      0,
-    );
+    // Build signature string with alphabetically sorted parameters
+    const signatureString = `amount=${request.amount}&cancelUrl=${request.cancelUrl}&description=${request.description}&orderCode=${request.orderCode}&returnUrl=${request.returnUrl}`;
 
-    const signatureString = `${this.config.clientId};${request.orderCode};${request.amount};${itemCount};${request.description};${request.cancelUrl};${request.returnUrl}`;
-
-    return crypto
+    const signature = crypto
       .createHmac('sha256', this.config.checksumKey)
       .update(signatureString)
       .digest('hex');
+
+    this.logger.debug('Signature generation:', {
+      signatureString,
+      checksumKeyLength: this.config.checksumKey.length,
+      generatedSignature: signature.substring(0, 20) + '...',
+    });
+
+    return signature;
   }
 
   /**
@@ -247,8 +309,22 @@ export class PayOSService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`PayOS API Error: ${errorData.message}`);
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        const errorMessage = errorData.message || errorData.error || errorText;
+        this.logger.error('PayOS API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorData,
+        });
+        throw new Error(
+          `PayOS API Error (${response.status}): ${errorMessage}`,
+        );
       }
 
       const data = await response.json();
