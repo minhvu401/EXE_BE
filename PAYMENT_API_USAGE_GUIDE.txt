@@ -1,0 +1,441 @@
+================================================================================
+                      PAYMENT API USAGE GUIDE - PayOS Integration
+================================================================================
+
+Table of Contents:
+1. Overview
+2. Authentication
+3. API Endpoints
+4. Request/Response Examples
+5. Payment Flow Workflow
+6. Error Handling
+7. Important Notes
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The payment system is integrated with PayOS payment gateway, supporting:
+- Payment link creation with checkout URL
+- Webhook handling for payment status updates
+- Payment history tracking
+- User payment verification
+
+API Base URL: http://localhost:3000/api/v1/payments  (development)
+              https://your-domain.com/api/v1/payments (production)
+
+================================================================================
+2. AUTHENTICATION
+================================================================================
+
+All payment endpoints (except webhook) require JWT Authentication:
+- Include Authorization header: Bearer <jwt_token>
+- JWT token obtained from login endpoint in auth module
+- Token contains: user ID, email, role
+
+Example Authorization Header:
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Webhook endpoint (/payos-webhook) is PUBLIC - NO authentication required
+
+================================================================================
+3. API ENDPOINTS
+================================================================================
+
+A. CREATE PAYMENT
+────────────────────────────────────────────────────────────────────────────
+
+Endpoint: POST /payments/create
+Authentication: Required (Bearer Token)
+Content-Type: application/json
+
+REQUEST BODY:
+{
+  "amount": 50000,                          // Required: number | Price in VND
+  "description": "Premium Package",         // Required: string | Payment description
+  "packageType": "ai-premium"               // Optional: string | Package identifier
+}
+
+RESPONSE 201 (Success):
+{
+  "_id": "67a1f2b3c4d5e6f7g8h9i0j1",     // Payment ID in database
+  "userId": "67a0e1b2c3d4e5f6g7h8i9j0",  // User ID
+  "orderCode": 1710123456,                 // PayOS order code (Unix timestamp)
+  "amount": 50000,                         // Payment amount
+  "description": "Premium Package",        // Payment description
+  "checkoutUrl": "https://payos.vn/...",  // ← REDIRECT USER TO THIS URL
+  "transactionRef": "AI1710123456",        // Transaction reference (AI + orderCode)
+  "status": "PENDING",                     // Initial status
+  "createdAt": "2026-03-10T12:34:56Z",    // Creation timestamp
+  "updatedAt": "2026-03-10T12:34:56Z"
+}
+
+RESPONSE 400 (Error):
+{
+  "statusCode": 400,
+  "message": "PayOS API Error: Invalid request",  // Specific error message
+  "error": "Bad Request"
+}
+
+NEXT STEP:
+→ Redirect user to checkoutUrl (from response)
+→ User fills payment details on PayOS page
+→ Payment confirmed → PayOS sends webhook to our backend
+→ Backend updates payment status to COMPLETED
+
+────────────────────────────────────────────────────────────────────────────
+
+B. GET PAYMENT HISTORY
+────────────────────────────────────────────────────────────────────────────
+
+Endpoint: GET /payments/history
+Authentication: Required (Bearer Token)
+Query Parameters: None
+
+RESPONSE 200 (Success):
+[
+  {
+    "_id": "67a1f2b3c4d5e6f7g8h9i0j1",
+    "userId": "67a0e1b2c3d4e5f6g7h8i9j0",
+    "orderCode": 1710123456,
+    "amount": 50000,
+    "description": "Premium Package",
+    "transactionRef": "AI1710123456",
+    "status": "COMPLETED",
+    "createdAt": "2026-03-10T12:34:56Z",
+    "updatedAt": "2026-03-10T12:40:00Z"
+  },
+  {
+    "_id": "67a0f2b3c4d5e6f7g8h9i0j1",
+    "userId": "67a0e1b2c3d4e5f6g7h8i9j0",
+    "orderCode": 1710123000,
+    "amount": 25000,
+    "description": "Basic Package",
+    "transactionRef": "AI1710123000",
+    "status": "COMPLETED",
+    "createdAt": "2026-03-09T08:00:00Z",
+    "updatedAt": "2026-03-09T08:15:30Z"
+  }
+]
+
+────────────────────────────────────────────────────────────────────────────
+
+C. GET PAYMENT DETAIL
+────────────────────────────────────────────────────────────────────────────
+
+Endpoint: GET /payments/detail/:transactionRef
+Authentication: Required (Bearer Token)
+Path Parameters:
+  - transactionRef: string | Transaction reference (e.g., "AI1710123456")
+
+RESPONSE 200 (Success):
+{
+  "_id": "67a1f2b3c4d5e6f7g8h9i0j1",
+  "userId": "67a0e1b2c3d4e5f6g7h8i9j0",
+  "orderCode": 1710123456,
+  "amount": 50000,
+  "description": "Premium Package",
+  "transactionRef": "AI1710123456",
+  "status": "COMPLETED",
+  "createdAt": "2026-03-10T12:34:56Z",
+  "updatedAt": "2026-03-10T12:40:00Z"
+}
+
+RESPONSE 404 (Not Found):
+{
+  "statusCode": 404,
+  "message": "Payment not found"
+}
+
+────────────────────────────────────────────────────────────────────────────
+
+D. GET PAYMENT STATUS
+────────────────────────────────────────────────────────────────────────────
+
+Endpoint: GET /payments/status/:orderCode
+Authentication: Required (Bearer Token)
+Path Parameters:
+  - orderCode: number | PayOS order code
+
+RESPONSE 200 (Success):
+{
+  "status": "COMPLETED",
+  "amount": 50000,
+  "orderCode": 1710123456
+}
+
+RESPONSE 404 (Not Found):
+{
+  "statusCode": 404,
+  "message": "Payment not found"
+}
+
+────────────────────────────────────────────────────────────────────────────
+
+E. CHECK IF USER HAS PAID
+────────────────────────────────────────────────────────────────────────────
+
+Endpoint: GET /payments/check-paid
+Authentication: Required (Bearer Token)
+Query Parameters: None
+
+RESPONSE 200 (Success - User has paid):
+{
+  "hasPaid": true,
+  "lastPaymentDate": "2026-03-10T12:40:00Z"
+}
+
+RESPONSE 200 (Success - User has not paid):
+{
+  "hasPaid": false
+}
+
+────────────────────────────────────────────────────────────────────────────
+
+F. PAYOS WEBHOOK (Payment Status Update)
+────────────────────────────────────────────────────────────────────────────
+
+Endpoint: POST /payments/payos-webhook
+Authentication: NOT Required (Public endpoint)
+Content-Type: application/json
+
+REQUEST BODY (from PayOS):
+{
+  "orderCode": 1710123456,
+  "id": "payos_id_12345",
+  "amount": 50000,
+  "amountPaid": 50000,
+  "amountRemaining": 0,
+  "status": "PAID",
+  "createdAt": "2026-03-10T12:34:56Z",
+  "transactions": [
+    {
+      "reference": "123456789",
+      "transactionDate": "2026-03-10T12:35:00Z",
+      "transactionType": "IN",
+      "amount": 50000
+    }
+  ],
+  "itemData": "[reference_AI1710123456]",
+  "checkoutUrl": "https://payos.vn/...",
+  "signatureKey": "d4523e8f9a1b2c3d...",  // HMAC-SHA256 signature
+  "code": "00"
+}
+
+RESPONSE 200 (Success):
+{
+  "message": "Webhook processed successfully",
+  "orderCode": 1710123456,
+  "status": "COMPLETED"
+}
+
+RESPONSE 400 (Invalid Signature):
+{
+  "statusCode": 400,
+  "message": "Invalid webhook signature"
+}
+
+BACKEND ACTION:
+→ Validates webhook signature using PAYOS_CHECKSUM_KEY
+→ Updates payment status to COMPLETED
+→ May trigger additional business logic (email, notifications, etc.)
+
+================================================================================
+4. REQUEST/RESPONSE EXAMPLES
+================================================================================
+
+EXAMPLE 1: Creating a Payment (Using curl)
+────────────────────────────────────────────────────────────────────────────
+
+curl -X POST http://localhost:3000/api/v1/payments/create \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 50000,
+    "description": "Premium AI Package",
+    "packageType": "ai-premium"
+  }'
+
+Expected Response:
+{
+  "_id": "67a1f2b3c4d5e6f7g8h9i0j1",
+  "userId": "67a0e1b2c3d4e5f6g7h8i9j0",
+  "orderCode": 1710123456,
+  "amount": 50000,
+  "description": "Premium AI Package",
+  "checkoutUrl": "https://payos.vn/b93f816e-5b9f-48cc-b00b-1b52e1f19f4a",
+  "transactionRef": "AI1710123456",
+  "status": "PENDING",
+  "createdAt": "2026-03-10T12:34:56Z",
+  "updatedAt": "2026-03-10T12:34:56Z"
+}
+
+NEXT:
+→ Use checkoutUrl to redirect user: window.location.href = response.checkoutUrl
+→ User completes payment on PayOS
+→ PayOS redirects back to your app
+
+────────────────────────────────────────────────────────────────────────────
+
+EXAMPLE 2: Checking Payment Status (Using curl)
+────────────────────────────────────────────────────────────────────────────
+
+curl -X GET http://localhost:3000/api/v1/payments/status/1710123456 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected Response:
+{
+  "status": "COMPLETED",
+  "amount": 50000,
+  "orderCode": 1710123456
+}
+
+────────────────────────────────────────────────────────────────────────────
+
+EXAMPLE 3: Getting Payment History (Using curl)
+────────────────────────────────────────────────────────────────────────────
+
+curl -X GET http://localhost:3000/api/v1/payments/history \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected Response:
+Array of payment objects (see GET /payments/history section above)
+
+================================================================================
+5. PAYMENT FLOW WORKFLOW
+================================================================================
+
+Step 1: USER INITIATES PAYMENT
+   ↓
+   Frontend calls: POST /payments/create
+   Send: { amount, description, packageType }
+   Receive: checkoutUrl, orderCode, transactionRef
+
+Step 2: USER REDIRECTED TO PAYOS
+   ↓
+   Frontend: window.location.href = response.checkoutUrl
+   User fills payment details on PayOS checkout page
+
+Step 3: PAYMENT PROCESSING
+   ↓
+   User completes payment on PayOS
+   PayOS processes the transaction
+
+Step 4: WEBHOOK NOTIFICATION (Backend)
+   ↓
+   PayOS sends webhook to: POST /payments/payos-webhook
+   Backend validates signature
+   Backend updates payment status to COMPLETED
+
+Step 5: USER REDIRECT BACK
+   ↓
+   PayOS redirects user to your specified return URL
+   (Configure in PayOS dashboard)
+
+Step 6: VERIFY PAYMENT (Frontend)
+   ↓
+   Frontend calls: GET /payments/check-paid
+   Response: { hasPaid: true }
+   Grant user access to premium features
+
+TIMING NOTES:
+- Webhook usually arrives within 2-5 seconds after payment
+- Frontend should poll check-paid endpoint if webhook delayed
+- Database updates on webhook receipt, not user redirect
+
+================================================================================
+6. ERROR HANDLING
+================================================================================
+
+COMMON ERROR RESPONSES:
+
+400 Bad Request - Invalid payload:
+{
+  "statusCode": 400,
+  "message": "Amount must be a positive number",
+  "error": "Bad Request"
+}
+
+401 Unauthorized - Missing/Invalid JWT:
+{
+  "statusCode": 401,
+  "message": "Unauthorized"
+}
+
+404 Not Found - Payment not found:
+{
+  "statusCode": 404,
+  "message": "Payment not found"
+}
+
+500 Internal Server Error - PayOS API failure:
+{
+  "statusCode": 500,
+  "message": "PayOS API Error: Connection timeout",
+  "error": "Internal Server Error"
+}
+
+WEBHOOK ERROR - Invalid signature:
+{
+  "statusCode": 400,
+  "message": "Invalid webhook signature"
+}
+
+ERROR HANDLING BEST PRACTICES:
+1. Always validate JWT token before calling payment endpoints
+2. Check error response message and handle accordingly
+3. For webhook errors, log and alert DevOps/admin
+4. Implement payment timeout retry mechanism (5-10 minutes)
+5. Show user-friendly error messages, don't expose internal errors
+
+================================================================================
+7. IMPORTANT NOTES
+================================================================================
+
+SECURITY:
+✓ Webhook endpoint is public but protected by HMAC-SHA256 signature
+✓ Always validate checkout URL structure before redirecting
+✓ Store PAYOS_CHECKSUM_KEY securely in .env (never in code)
+✓ All sensitive operations require JWT authentication
+
+PAYMENT STATUS VALUES:
+- PENDING: Payment created, waiting for user payment
+- COMPLETED: User completed payment successfully
+- CANCELLED: Payment was cancelled
+
+ORDER CODE:
+- Generated as Unix timestamp (Math.floor(Date.now() / 1000))
+- Combined with "AI" prefix to create transactionRef (e.g., "AI1710123456")
+- Used to identify payment in PayOS system
+
+WEBHOOK SIGNATURE:
+- Generated by PayOS using HMAC-SHA256
+- Verified on backend using PAYOS_CHECKSUM_KEY
+- Format: HMAC-SHA256(sorted_data, checksum_key)
+- Ensures webhook authenticity and data integrity
+
+ENVIRONMENT VARIABLES REQUIRED:
+PAYOS_CLIENT_ID=your_client_id
+PAYOS_API_KEY=your_api_key
+PAYOS_CHECKSUM_KEY=your_checksum_key
+PAYOS_API_URL=https://api.payos.vn
+
+DATABASE SCHEMA:
+- Payment stored in MongoDB
+- Fields: _id, userId, orderCode, amount, description, 
+          transactionRef, status, createdAt, updatedAt
+- Indexes on: userId, orderCode, transactionRef
+
+TESTING:
+- Use test credentials from PayOS in .env.test
+- Webhook can be tested via ngrok + local server
+- Postman collection available in /docs/payment-api.postman_collection.json
+
+SUPPORT:
+- PayOS Documentation: https://developers.payos.vn/
+- API Rate Limit: 100 requests/minute
+- Support Email: support@payos.vn
+
+================================================================================
+END OF GUIDE
+================================================================================

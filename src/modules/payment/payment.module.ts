@@ -4,7 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PaymentService } from './payment.service';
 import { PaymentController } from './payment.controller';
 import { PaymentSchema } from './schemas/payment.schema';
-import { SepayService } from './sepay.service';
+import { PayOSService } from './payos.service';
 
 @Module({
   imports: [
@@ -17,7 +17,7 @@ import { SepayService } from './sepay.service';
     ConfigModule,
   ],
   controllers: [PaymentController],
-  providers: [SepayService, PaymentService],
+  providers: [PayOSService, PaymentService],
   exports: [PaymentService],
 })
 export class PaymentModule {}

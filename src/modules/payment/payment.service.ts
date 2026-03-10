@@ -1,41 +1,40 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { Payment, PaymentStatus } from './schemas/payment.schema';
-import { SepayService } from './sepay.service';
+import { PayOSService, WebhookData } from './payos.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 
 @Injectable()
 export class PaymentService {
+  private logger = new Logger('PaymentService');
+
   constructor(
     @InjectModel('Payment') private paymentModel: Model<Payment>,
     private configService: ConfigService,
-    private sepayService: SepayService,
+    private payosService: PayOSService,
   ) {}
 
   /**
-   * Tạo đơn thanh toán mới
+   * Tạo đơn thanh toán mới và payment link
    */
   async createPayment(
     userId: string,
     createPaymentDto: CreatePaymentDto,
+    baseUrl: string,
   ): Promise<{
     _id: string;
-    transactionRef: string;
+    orderCode: number;
     amount: number;
     description: string;
-    paymentInfo: {
-      accountNumber: string;
-      bankName: string;
-      instructions: string;
-    };
+    checkoutUrl: string;
   }> {
-    // Tạo transaction reference duy nhất
-    const transactionRef =
-      'AI' + Date.now() + Math.random().toString(36).substring(7);
+    // Generate unique order code
+    const orderCode = Math.floor(Date.now() / 1000);
+    const transactionRef = `AI${orderCode}`;
 
-    // Tạo payment object
+    // Create payment object in database
     const payment = new this.paymentModel({
       userId: new Types.ObjectId(userId),
       amount: createPaymentDto.amount,
@@ -47,95 +46,105 @@ export class PaymentService {
 
     await payment.save();
 
-    // Tạo yêu cầu thanh toán từ Sepay
-    const paymentRequest = this.sepayService.createPaymentRequest(
-      createPaymentDto.amount,
-      transactionRef,
-      createPaymentDto.description,
-    );
+    // Create payment link via PayOS
+    const returnUrl = `${baseUrl}/payment/success?orderCode=${orderCode}`;
+    const cancelUrl = `${baseUrl}/payment/cancel?orderCode=${orderCode}`;
 
-    payment.paymentUrl = `Bank Transfer: ${paymentRequest.accountNumber}`;
+    const paymentLinkRequest = {
+      orderCode,
+      amount: createPaymentDto.amount,
+      description: createPaymentDto.description,
+      returnUrl,
+      cancelUrl,
+      items: [
+        {
+          name: createPaymentDto.description,
+          price: createPaymentDto.amount,
+          quantity: 1,
+        },
+      ],
+    };
+
+    const paymentLink =
+      await this.payosService.createPaymentLink(paymentLinkRequest);
+
+    // Update payment with PayOS data
+    payment.paymentUrl = paymentLink.checkoutUrl;
     await payment.save();
+
+    this.logger.debug('Payment created:', {
+      _id: payment._id.toString(),
+      orderCode,
+      checkoutUrl: paymentLink.checkoutUrl,
+    });
 
     return {
       _id: payment._id.toString(),
-      transactionRef,
+      orderCode,
       amount: createPaymentDto.amount,
       description: createPaymentDto.description,
-      paymentInfo: {
-        accountNumber: paymentRequest.accountNumber,
-        bankName: paymentRequest.bankName,
-        instructions: paymentRequest.instructions,
-      },
+      checkoutUrl: paymentLink.checkoutUrl,
     };
   }
 
   /**
-   * Xử lý callback từ Sepay
+   * Xử lý webhook từ PayOS
    */
-  async handleSepayCallback(query: Record<string, string | string[]>) {
-    console.log('[PaymentService] Received Sepay callback:', query);
+  async handlePayOSWebhook(body: any) {
+    this.logger.debug('Received PayOS webhook:', body);
 
-    const verify = this.sepayService.verifyCallback(query);
-    console.log('[PaymentService] Verified callback data:', verify);
+    const webhookData = this.payosService.parseWebhookData(body);
 
-    if (!verify.isValid) {
+    if (!webhookData) {
       return {
         success: false,
-        message: 'Invalid payment data',
-        received: query,
+        message: 'Invalid webhook signature',
       };
     }
 
-    // Tìm payment bằng transactionRef
+    // Find payment by orderCode
+    const orderCode = webhookData.orderCode.toString();
     const payment = await this.paymentModel.findOne({
-      transactionRef: verify.transactionRef,
+      transactionRef: `AI${orderCode}`,
     });
 
-    console.log('[PaymentService] Found payment:', payment);
-
     if (!payment) {
+      this.logger.warn('Payment not found for orderCode:', orderCode);
       return {
         success: false,
         message: 'Payment not found',
-        transactionRef: verify.transactionRef,
+        orderCode,
       };
     }
 
     // Verify amount
-    if (payment.amount !== verify.amount) {
-      console.log('[PaymentService] Amount mismatch:', {
+    if (payment.amount !== webhookData.amount) {
+      this.logger.warn('Amount mismatch:', {
         dbAmount: payment.amount,
-        verifyAmount: verify.amount,
+        webhookAmount: webhookData.amount,
       });
       return {
         success: false,
         message: 'Amount mismatch',
         dbAmount: payment.amount,
-        verifyAmount: verify.amount,
+        webhookAmount: webhookData.amount,
       };
     }
 
-    // Update payment status dựa trên Sepay status
-    // status: 1 = success (webhook chỉ gửi khi giao dịch xác nhận)
-    if (verify.status === '1') {
-      payment.status = PaymentStatus.COMPLETED;
-    } else {
-      payment.status = PaymentStatus.PENDING;
-    }
-
-    payment.responseCode = verify.status;
-
+    // Update payment status
+    // PayOS webhook indicates successful payment
+    payment.status = PaymentStatus.COMPLETED;
+    payment.responseCode = webhookData.code;
     await payment.save();
 
-    console.log('[PaymentService] Payment updated:', {
+    this.logger.debug('Payment updated to completed:', {
       transactionRef: payment.transactionRef,
-      status: payment.status,
+      orderCode,
     });
 
     return {
-      success: verify.status === '1',
-      message: verify.status === '1' ? 'Payment successful' : 'Payment pending',
+      success: true,
+      message: 'Payment completed',
       payment: {
         _id: payment._id,
         transactionRef: payment.transactionRef,
@@ -172,5 +181,29 @@ export class PaymentService {
    */
   async getPaymentDetail(transactionRef: string) {
     return this.paymentModel.findOne({ transactionRef });
+  }
+
+  /**
+   * Get payment status
+   */
+  async getPaymentStatus(orderCode: number) {
+    try {
+      const paymentLink = await this.payosService.getPaymentLink(orderCode);
+
+      const payment = await this.paymentModel.findOne({
+        transactionRef: `AI${orderCode}`,
+      });
+
+      return {
+        orderCode,
+        paymentStatus: paymentLink.status,
+        dbStatus: payment?.status,
+        amountPaid: paymentLink.amountPaid,
+        amount: paymentLink.amount,
+      };
+    } catch (error) {
+      this.logger.error('Get payment status error:', error);
+      throw error;
+    }
   }
 }
