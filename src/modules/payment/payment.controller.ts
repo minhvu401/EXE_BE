@@ -9,6 +9,7 @@ import {
   HttpStatus,
   Param,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import {
@@ -27,13 +28,22 @@ import { CurrentUser } from '../auth/decorators/currentUser.decorator';
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
+  /**
+   * Get base URL from request
+   */
+  private getBaseUrl(request: Request): string {
+    const protocol = request.protocol;
+    const host = request.get('host');
+    return `${protocol}://${host}`;
+  }
+
   @Post('/create')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Tạo đơn thanh toán mới',
     description:
-      'Tạo đơn thanh toán Sepay để sử dụng tính năng AI recommendation',
+      'Tạo đơn thanh toán PayOS để sử dụng tính năng AI recommendation',
   })
   @ApiResponse({
     status: 201,
@@ -41,10 +51,10 @@ export class PaymentController {
     schema: {
       example: {
         _id: '507f1f77bcf86cd799439011',
-        transactionRef: 'AI1234567890abc',
+        orderCode: 1234567890,
         amount: 50000,
         description: 'Thanh toán gói AI Premium',
-        paymentUrl: 'https://sepay.vn/payment/...',
+        checkoutUrl: 'https://payos.vn/payment/...',
       },
     },
   })
@@ -53,11 +63,14 @@ export class PaymentController {
   async createPayment(
     @Body() createPaymentDto: CreatePaymentDto,
     @CurrentUser() user: { sub: string },
+    @Req() request: Request,
   ) {
     try {
+      const baseUrl = this.getBaseUrl(request);
       return await this.paymentService.createPayment(
         user.sub,
         createPaymentDto,
+        baseUrl,
       );
     } catch (error) {
       const message =
@@ -66,10 +79,24 @@ export class PaymentController {
     }
   }
 
+  @Post('/payos-webhook')
+  @ApiOperation({
+    summary: 'PayOS webhook endpoint',
+    description: 'Nhận kết quả thanh toán từ PayOS',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Webhook processed successfully',
+  })
+  @HttpCode(HttpStatus.OK)
+  async payosWebhook(@Body() body: any) {
+    return this.paymentService.handlePayOSWebhook(body);
+  }
+
   @Get('/sepay-callback')
   @ApiOperation({
-    summary: 'Sepay callback endpoint',
-    description: 'Nhận kết quả thanh toán từ Sepay',
+    summary: '[DEPRECATED] Sepay callback endpoint',
+    description: 'Nhận kết quả thanh toán từ Sepay (không còn sử dụng)',
   })
   @ApiResponse({
     status: 200,
@@ -77,23 +104,25 @@ export class PaymentController {
   })
   @HttpCode(HttpStatus.OK)
   async sepayCallback(@Query() query: Record<string, string | string[]>) {
-    return this.paymentService.handleSepayCallback(query);
+    return {
+      success: false,
+      message: 'Sepay endpoint is deprecated, use PayOS instead',
+    };
   }
 
   @Get('/test-callback')
   @ApiOperation({
-    summary: '[TEST ONLY] Simulate Sepay callback for testing',
-    description:
-      'Để test: /payments/test-callback?reference_number=AI123&amount=50000',
+    summary: '[TEST ONLY] Simulate PayOS webhook for testing',
+    description: 'Để test: POST /payments/test-callback với webhook body',
   })
   @ApiResponse({
     status: 200,
     description: 'Test callback processed',
   })
   @HttpCode(HttpStatus.OK)
-  async testCallback(@Query() query: Record<string, string | string[]>) {
-    console.log('[TEST] Simulating Sepay callback with:', query);
-    return this.paymentService.handleSepayCallback(query);
+  async testCallback(@Body() body: any) {
+    console.log('[TEST] Simulating PayOS webhook with:', body);
+    return this.paymentService.handlePayOSWebhook(body);
   }
 
   @Get('/history')
@@ -118,7 +147,18 @@ export class PaymentController {
     return this.paymentService.getPaymentDetail(transactionRef);
   }
 
-  @Get('/check-status')
+  @Get('/status/:orderCode')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Kiểm tra trạng thái thanh toán',
+  })
+  @HttpCode(HttpStatus.OK)
+  async getPaymentStatus(@Param('orderCode') orderCode: string) {
+    return this.paymentService.getPaymentStatus(parseInt(orderCode, 10));
+  }
+
+  @Get('/check-paid')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
