@@ -1,0 +1,421 @@
+============================================
+MESSAGING API - HƯỚNG DẪN SỬ DỤNG ENDPOINTS
+============================================
+
+JWT TOKEN:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04
+
+BASE URL: http://localhost:3000
+
+============================================
+1. GỬI TIN NHẮN
+============================================
+Endpoint: POST /messages
+Method: POST
+Authentication: Bearer Token (bắt buộc)
+
+Request Body:
+{
+  "recipientId": "6944bed56fba0d6b3af3b854",
+  "content": "Hello, anh dep trai"
+}
+
+Giải thích:
+- recipientId: ID của người nhận tin nhắn (ObjectId từ MongoDB)
+- content: Nội dung tin nhắn (tối thiểu 1 ký tự)
+
+Curl:
+curl -X 'POST' \
+  'http://localhost:3000/messages' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04' \
+  -H 'Content-Type: application/json' \
+  -d '{"recipientId":"6944bed56fba0d6b3af3b854","content":"Hello World"}'
+
+Response (201 Created):
+{
+  "senderId": "692b46e6be53070fe92fd21",
+  "recipientId": {
+    "_id": "6944bed56fba0d6b3af3b854",
+    "email": "nguynkhanh271203@gmail.com",
+    "fullName": "Nguyen Khanh",
+    ...
+  },
+  "conversationId": "69b01b964dec0304286ea32e",
+  "content": "Hello World",
+  "isRead": false,
+  "_id": "69b01b964dec0304286ea330",
+  "createdAt": "2026-03-10T13:24:38.789Z",
+  "updatedAt": "2026-03-10T13:24:38.789Z"
+}
+
+============================================
+2. LẤY DANH SÁCH CUỘC HỘI THOẠI
+============================================
+Endpoint: GET /messages/conversations
+Method: GET
+Authentication: Bearer Token (bắt buộc)
+
+Query Parameters (tùy chọn):
+- page: số trang (mặc định 1)
+- limit: số records mỗi trang (mặc định 15)
+
+Curl:
+curl -X 'GET' \
+  'http://localhost:3000/messages/conversations?page=1&limit=10' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04'
+
+Response (200 OK):
+{
+  "data": [
+    {
+      "_id": "69b01b964dec0304286ea32e",
+      "participants": ["692b46e6be53070fe92fd21", "6944bed56fba0d6b3af3b854"],
+      "lastMessage": {...},
+      "lastMessageContent": "Hello World",
+      "lastMessageSenderId": "692b46e6be53070fe92fd21",
+      "lastMessageAt": "2026-03-10T13:24:38.789Z",
+      "createdAt": "2026-03-10T13:19:30.931Z",
+      "updatedAt": "2026-03-10T13:24:38.789Z"
+    }
+  ],
+  "total": 5,
+  "page": 1,
+  "limit": 10
+}
+
+============================================
+3. LẤY CHI TIẾT CUỘC HỘI THOẠI
+============================================
+Endpoint: GET /messages/conversations/:conversationId
+Method: GET
+Authentication: Bearer Token (bắt buộc)
+
+URL Parameters:
+- conversationId: ID của cuộc hội thoại (ObjectId từ MongoDB)
+
+Curl:
+curl -X 'GET' \
+  'http://localhost:3000/messages/conversations/69b01b964dec0304286ea32e' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04'
+
+Response (200 OK):
+{
+  "_id": "69b01b964dec0304286ea32e",
+  "participants": [
+    {
+      "_id": "692b46e6be53070fe92fd21",
+      "fullName": "Your Name",
+      "avatarUrl": "...",
+      "email": "your@email.com"
+    },
+    {
+      "_id": "6944bed56fba0d6b3af3b854",
+      "fullName": "Nguyen Khanh",
+      "avatarUrl": "...",
+      "email": "nguynkhanh271203@gmail.com"
+    }
+  ],
+  "lastMessage": {...},
+  "createdAt": "2026-03-10T13:19:30.931Z",
+  "updatedAt": "2026-03-10T13:24:38.789Z"
+}
+
+============================================
+4. LẤY DANH SÁCH TIN NHẮN TRONG CUỘC HỘI THOẠI
+============================================
+Endpoint: GET /messages/conversations/:conversationId/messages
+Method: GET
+Authentication: Bearer Token (bắt buộc)
+
+URL Parameters:
+- conversationId: ID của cuộc hội thoại
+
+Query Parameters (tùy chọn):
+- page: số trang (mặc định 1)
+- limit: số records mỗi trang (mặc định 20)
+
+Curl:
+curl -X 'GET' \
+  'http://localhost:3000/messages/conversations/69b01b964dec0304286ea32e/messages?page=1&limit=5' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04'
+
+Response (200 OK):
+{
+  "data": [
+    {
+      "_id": "69b01b964dec0304286ea330",
+      "senderId": {
+        "_id": "692b46e6be53070fe92fd21",
+        "fullName": "Your Name",
+        "avatarUrl": "...",
+        "email": "your@email.com"
+      },
+      "recipientId": {
+        "_id": "6944bed56fba0d6b3af3b854",
+        "fullName": "Nguyen Khanh",
+        "avatarUrl": "...",
+        "email": "nguynkhanh271203@gmail.com"
+      },
+      "conversationId": "69b01b964dec0304286ea32e",
+      "content": "Hello World",
+      "isRead": false,
+      "createdAt": "2026-03-10T13:24:38.789Z",
+      "updatedAt": "2026-03-10T13:24:38.789Z"
+    }
+  ],
+  "total": 3,
+  "page": 1,
+  "limit": 5
+}
+
+============================================
+5. LẤY TIN NHẮN CỤ THỂ
+============================================
+Endpoint: GET /messages/:messageId
+Method: GET
+Authentication: Bearer Token (bắt buộc)
+
+URL Parameters:
+- messageId: ID của tin nhắn (ObjectId từ MongoDB)
+
+Curl:
+curl -X 'GET' \
+  'http://localhost:3000/messages/69b01b964dec0304286ea330' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04'
+
+Response (200 OK):
+{
+  "_id": "69b01b964dec0304286ea330",
+  "senderId": {
+    "_id": "692b46e6be53070fe92fd21",
+    "fullName": "Your Name",
+    "avatarUrl": "...",
+    "email": "your@email.com"
+  },
+  "recipientId": {
+    "_id": "6944bed56fba0d6b3af3b854",
+    "fullName": "Nguyen Khanh",
+    "avatarUrl": "...",
+    "email": "nguynkhanh271203@gmail.com"
+  },
+  "content": "Hello World",
+  "isRead": false,
+  "createdAt": "2026-03-10T13:24:38.789Z",
+  "updatedAt": "2026-03-10T13:24:38.789Z"
+}
+
+============================================
+6. CẬP NHẬT TIN NHẮN (EDIT MESSAGE)
+============================================
+Endpoint: PATCH /messages/:messageId
+Method: PATCH
+Authentication: Bearer Token (bắt buộc)
+Quyền: Chỉ người gửi mới có thể edit
+
+URL Parameters:
+- messageId: ID của tin nhắn
+
+Request Body:
+{
+  "content": "Updated message content"
+}
+
+Curl:
+curl -X 'PATCH' \
+  'http://localhost:3000/messages/69b01b964dec0304286ea330' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04' \
+  -H 'Content-Type: application/json' \
+  -d '{"content":"Updated message content"}'
+
+Response (200 OK):
+{
+  "_id": "69b01b964dec0304286ea330",
+  "senderId": "692b46e6be53070fe92fd21",
+  "recipientId": "6944bed56fba0d6b3af3b854",
+  "conversationId": "69b01b964dec0304286ea32e",
+  "content": "Updated message content",
+  "isRead": false,
+  "editedAt": "2026-03-10T14:00:00.000Z",
+  "createdAt": "2026-03-10T13:24:38.789Z",
+  "updatedAt": "2026-03-10T14:00:00.000Z"
+}
+
+============================================
+7. ĐÁNH DẤU TIN NHẮN LÀ ĐÃ ĐỌC
+============================================
+Endpoint: PATCH /messages/:messageId/read
+Method: PATCH
+Authentication: Bearer Token (bắt buộc)
+Quyền: Chỉ người nhận mới có thể mark as read
+
+URL Parameters:
+- messageId: ID của tin nhắn
+
+Request Body: {} (không cần body)
+
+Curl:
+curl -X 'PATCH' \
+  'http://localhost:3000/messages/69b01b964dec0304286ea330/read' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+
+Response (200 OK):
+{
+  "_id": "69b01b964dec0304286ea330",
+  "senderId": "692b46e6be53070fe92fd21",
+  "recipientId": "6944bed56fba0d6b3af3b854",
+  "conversationId": "69b01b964dec0304286ea32e",
+  "content": "Updated message content",
+  "isRead": true,
+  "readAt": "2026-03-10T14:05:00.000Z",
+  "createdAt": "2026-03-10T13:24:38.789Z",
+  "updatedAt": "2026-03-10T14:05:00.000Z"
+}
+
+============================================
+8. ĐÁNH DẤU TẤT CẢ TIN NHẮN TRONG CUỘC HỘI THOẠI LÀ ĐÃ ĐỌC
+============================================
+Endpoint: PATCH /messages/conversations/:conversationId/read
+Method: PATCH
+Authentication: Bearer Token (bắt buộc)
+
+URL Parameters:
+- conversationId: ID của cuộc hội thoại
+
+Request Body: {} (không cần body)
+
+Curl:
+curl -X 'PATCH' \
+  'http://localhost:3000/messages/conversations/69b01b964dec0304286ea32e/read' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+
+Response (200 OK):
+{
+  "message": "All messages in conversation marked as read"
+}
+
+============================================
+9. LẤY SỐ TIN NHẮN CHƯA ĐỌC
+============================================
+Endpoint: GET /messages/unread-count
+Method: GET
+Authentication: Bearer Token (bắt buộc)
+
+Curl:
+curl -X 'GET' \
+  'http://localhost:3000/messages/unread-count' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04'
+
+Response (200 OK):
+{
+  "unreadCount": 5
+}
+
+============================================
+10. XÓA TIN NHẮN
+============================================
+Endpoint: DELETE /messages/:messageId
+Method: DELETE
+Authentication: Bearer Token (bắt buộc)
+Quyền: Chỉ người gửi mới có thể xóa
+
+URL Parameters:
+- messageId: ID của tin nhắn
+
+Curl:
+curl -X 'DELETE' \
+  'http://localhost:3000/messages/69b01b964dec0304286ea330' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04'
+
+Response (204 No Content): - Response trống
+
+============================================
+11. XÓA TOÀN BỘ CUỘC HỘI THOẠI VÀ TIN NHẮN
+============================================
+Endpoint: DELETE /messages/conversations/:conversationId
+Method: DELETE
+Authentication: Bearer Token (bắt buộc)
+Quyền: Chỉ participant của cuộc hội thoại mới có thể xóa
+
+URL Parameters:
+- conversationId: ID của cuộc hội thoại
+
+Curl:
+curl -X 'DELETE' \
+  'http://localhost:3000/messages/conversations/69b01b964dec0304286ea32e' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTIyYjQ2ZTZiZTUzMDcwZmU5MmZkMjEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc3MzE0ODU0MiwiZXhwIjoxNzczMjM0OTQyfQ.vtNy80C2Z8b5KByigPINsoFLkQoksdx1AgqSpvSrx04'
+
+Response (204 No Content): - Response trống
+
+============================================
+LƯU Ý QUAN TRỌNG
+============================================
+
+1. JWT TOKEN:
+   - Token có thể hết hạn (exp), cần tạo token mới khi bị lỗi 401
+   - Token chứa sub (user ID) được dùng để xác định người gửi
+
+2. CONVERSATION:
+   - Được tự động tạo khi gửi tin nhắn đầu tiên giữa 2 người
+   - Mỗi cuộc hội thoại chỉ có 2 participants
+
+3. AUTHORIZATION:
+   - Chỉ người gửi mới có thể edit/delete message
+   - Chỉ người nhận mới có thể mark message as read
+   - Chỉ participant mới có thể access conversation
+
+4. ERROR RESPONSES:
+   - 400 Bad Request: Dữ liệu không hợp lệ hoặc logic error
+   - 401 Unauthorized: Token không hợp lệ hoặc hết hạn
+   - 404 Not Found: Resource không tìm thấy
+   - 500 Internal Server Error: Lỗi server
+
+5. PAGINATION:
+   - page: bắt đầu từ 1 (mặc định 1)
+   - limit: số records mỗi trang
+   - Response trả về: data[], total, page, limit
+
+============================================
+SAMPLE TEST FLOW
+============================================
+
+1. Gửi tin nhắn:
+   POST /messages
+   Body: {"recipientId":"6944bed56fba0d6b3af3b854","content":"Hello"}
+   >> Lấy conversationId và messageId từ response
+
+2. Xem danh sách cuộc hội thoại:
+   GET /messages/conversations
+
+3. Xem tin nhắn trong cuộc hội thoại:
+   GET /messages/conversations/{conversationId}/messages
+
+4. Đánh dấu tin nhắn đã đọc:
+   PATCH /messages/{messageId}/read
+
+5. Xem số tin nhắn chưa đọc:
+   GET /messages/unread-count
+
+6. Edit tin nhắn (nếu là người gửi):
+   PATCH /messages/{messageId}
+   Body: {"content":"Updated content"}
+
+7. Xóa tin nhắn (nếu là người gửi):
+   DELETE /messages/{messageId}
+
+8. Xóa toàn bộ cuộc hội thoại:
+   DELETE /messages/conversations/{conversationId}

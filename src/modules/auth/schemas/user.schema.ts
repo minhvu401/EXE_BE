@@ -29,7 +29,7 @@ export class User extends Document {
   avatarUrl?: string;
 
   @ApiProperty({ enum: Role, example: Role.USER })
-  @Prop({ enum: Role, required: true })
+  @Prop({ type: String, enum: Role, required: true })
   role: Role;
 
   //verify bằng EMAIL

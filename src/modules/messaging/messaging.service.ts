@@ -103,23 +103,24 @@ export class MessagingService {
     conversationId: string,
     userId: string,
   ): Promise<Conversation> {
-    const conversation = await this.conversationModel
-      .findById(conversationId)
-      .populate('participants', 'fullName avatarUrl email')
-      .populate('lastMessage');
+    const conversation = await this.conversationModel.findById(conversationId);
 
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
     }
 
-    const participants = (
-      conversation.participants as unknown as Array<{ _id: string }>
-    ).map((p) => p._id.toString());
-    if (!participants.includes(userId)) {
+    const userObjectId = new Types.ObjectId(userId);
+    if (!conversation.participants.some((p) => p.equals(userObjectId))) {
       throw new BadRequestException(
         'You are not a participant in this conversation',
       );
     }
+
+    // Populate after verification
+    await conversation.populate([
+      { path: 'participants', select: 'fullName avatarUrl email' },
+      { path: 'lastMessage' },
+    ]);
 
     return conversation;
   }
