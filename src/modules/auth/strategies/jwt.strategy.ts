@@ -23,10 +23,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: UserPayload): UserPayload {
+  validate(payload: UserPayload): { id: string; role: string } {
     if (!payload.sub) {
       throw new UnauthorizedException('Token không hợp lệ (thiếu sub)');
     }
-    return payload;
+    return {
+      id: payload.sub,
+      role: payload.role,
+    };
   }
 }
