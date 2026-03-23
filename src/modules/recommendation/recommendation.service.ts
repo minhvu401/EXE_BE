@@ -89,7 +89,7 @@ Chỉ trả lại JSON, không có lời giải thích khác.`;
 
     try {
       const response = await this.geminiClient.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
         contents: prompt,
       });
 
@@ -152,7 +152,7 @@ Viết một đoạn văn 2-3 câu giải thích sự phù hợp.`;
 
     try {
       const response = await this.geminiClient.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         contents: prompt,
       });
 
