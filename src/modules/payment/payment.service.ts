@@ -228,14 +228,21 @@ export class PaymentService {
       this.logger.debug('Syncing payment status with PayOS:', orderCode);
 
       // Query payment status từ PayOS
-      const payosPaymentLink =
-        await this.payosService.getPaymentLink(orderCode);
-
-      this.logger.debug('PayOS payment status:', {
-        orderCode,
-        payosStatus: payosPaymentLink.status,
-      });
-
+      let payosPaymentLink;
+      try {
+        payosPaymentLink = await this.payosService.getPaymentLink(orderCode);
+      } catch (getPaymentLinkError) {
+        this.logger.error('Failed to get payment link from PayOS:', {
+          orderCode,
+          error:
+            getPaymentLinkError instanceof Error
+              ? getPaymentLinkError.message
+              : String(getPaymentLinkError),
+        });
+        throw new BadRequestException(
+          `Unable to check payment status from PayOS: ${getPaymentLinkError instanceof Error ? getPaymentLinkError.message : 'Unknown error'}`,
+        );
+      }
       // Find payment in database
       const payment = await this.paymentModel.findOne({
         transactionRef: `AI${orderCode}`,
