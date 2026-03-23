@@ -46,6 +46,10 @@ export class Payment extends Document {
   @Prop({ required: false })
   paymentUrl?: string;
 
+  @ApiProperty({ example: 50000 })
+  @Prop({ required: false })
+  amountPaid?: number;
+
   @ApiProperty()
   @Prop({ required: false })
   errorMessage?: string;

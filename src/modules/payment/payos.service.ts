@@ -126,7 +126,7 @@ export class PayOSService {
         },
       });
 
-      let response;
+      let response: Response;
       try {
         response = await fetch(url, {
           method: 'POST',
