@@ -37,7 +37,13 @@ export interface PayOSPaymentLinkResponse {
   }>;
   checkoutUrl: string;
   qrCode: string;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
+  status:
+    | 'PENDING'
+    | 'PROCESSING'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'EXPIRED'
+    | 'PAID';
   createdAt: string;
   expiredAt: string;
   cancelledAt: string;

@@ -312,4 +312,64 @@ export class PaymentService {
       throw new BadRequestException(message);
     }
   }
+
+  /**
+   * Auto-sync tất cả pending payments từ PayOS
+   * Chạy định kỳ bởi cronjob để kiểm tra các pending payments
+   * Nếu PayOS báo đã PAID/COMPLETED, cập nhật DB
+   */
+  async syncAllPendingPayments() {
+    try {
+      this.logger.debug('Auto-syncing all pending payments from PayOS...');
+
+      // Tìm tất cả pending payments
+      const pendingPayments = await this.paymentModel.find({
+        status: PaymentStatus.PENDING,
+      });
+
+      if (pendingPayments.length === 0) {
+        this.logger.debug('No pending payments to sync');
+        return;
+      }
+
+      this.logger.debug(
+        `Found ${pendingPayments.length} pending payments to sync`,
+      );
+
+      for (const payment of pendingPayments) {
+        try {
+          // Extract orderCode từ transactionRef (AI1774271389 -> 1774271389)
+          const orderCode = parseInt(
+            payment.transactionRef.replace('AI', ''),
+            10,
+          );
+
+          // Get payment status từ PayOS
+          const payosPaymentLink =
+            await this.payosService.getPaymentLink(orderCode);
+
+          // Nếu đã PAID/COMPLETED, update DB
+          if (
+            payosPaymentLink.status === 'COMPLETED' ||
+            payosPaymentLink.status === 'PAID'
+          ) {
+            payment.status = PaymentStatus.COMPLETED;
+            payment.amountPaid = payosPaymentLink.amountPaid;
+            await payment.save();
+          } else if (payosPaymentLink.status === 'CANCELLED') {
+            payment.status = PaymentStatus.CANCELLED;
+            await payment.save();
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Failed to sync payment ${payment.transactionRef}:`,
+            error instanceof Error ? error.message : String(error),
+          );
+          // Continue with next payment, không throw
+        }
+      }
+    } catch (error) {
+      this.logger.error('Auto-sync all pending payments failed:', error);
+    }
+  }
 }
