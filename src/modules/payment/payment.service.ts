@@ -251,6 +251,7 @@ export class PaymentService {
       }
 
       // Update payment status based on PayOS status
+      // PayOS can return 'COMPLETED' for successful payments
       if (payosPaymentLink.status === 'COMPLETED') {
         payment.status = PaymentStatus.COMPLETED;
         payment.amountPaid = payosPaymentLink.amountPaid;
