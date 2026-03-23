@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -258,8 +260,11 @@ export class PaymentService {
       }
 
       // Update payment status based on PayOS status
-      // PayOS can return 'COMPLETED' for successful payments
-      if (payosPaymentLink.status === 'COMPLETED') {
+      // PayOS can return 'COMPLETED' or 'PAID' for successful payments
+      if (
+        payosPaymentLink.status === 'COMPLETED' ||
+        payosPaymentLink.status === 'PAID'
+      ) {
         payment.status = PaymentStatus.COMPLETED;
         payment.amountPaid = payosPaymentLink.amountPaid;
         await payment.save();
