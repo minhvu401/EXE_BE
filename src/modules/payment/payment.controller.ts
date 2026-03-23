@@ -3,14 +3,11 @@ import {
   Post,
   Get,
   Body,
-  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
   Param,
   BadRequestException,
-  Req,
-  Inject,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -77,14 +74,11 @@ export class PaymentController {
   async createPayment(
     @Body() createPaymentDto: CreatePaymentDto,
     @CurrentUser() user: { sub: string },
-    @Req() request: Request,
   ) {
     try {
-      const baseUrl = this.getBaseUrl(request);
       return await this.paymentService.createPayment(
         user.sub,
         createPaymentDto,
-        baseUrl,
       );
     } catch (error) {
       const message =
@@ -153,6 +147,17 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   async getPaymentStatus(@Param('orderCode') orderCode: string) {
     return this.paymentService.getPaymentStatus(parseInt(orderCode, 10));
+  }
+
+  @Get('/sync-status/:orderCode')
+  @ApiOperation({
+    summary: 'Sync payment status từ PayOS',
+    description:
+      'Frontend gọi endpoint này khi user vào trang payment-success để update status từ PayOS',
+  })
+  @HttpCode(HttpStatus.OK)
+  async syncPaymentStatus(@Param('orderCode') orderCode: string) {
+    return this.paymentService.syncPaymentStatus(parseInt(orderCode, 10));
   }
 
   @Get('/check-paid')

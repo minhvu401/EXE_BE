@@ -109,8 +109,7 @@ export class MessagingService {
       throw new NotFoundException('Conversation not found');
     }
 
-    const userObjectId = new Types.ObjectId(userId);
-    if (!conversation.participants.some((p) => p.equals(userObjectId))) {
+    if (!conversation.participants.some((p) => p.toString() === userId)) {
       throw new BadRequestException(
         'You are not a participant in this conversation',
       );
@@ -141,8 +140,7 @@ export class MessagingService {
       throw new NotFoundException('Conversation not found');
     }
 
-    const userObjectId = new Types.ObjectId(userId);
-    if (!conversation.participants.some((p) => p.equals(userObjectId))) {
+    if (!conversation.participants.some((p) => p.toString() === userId)) {
       throw new BadRequestException(
         'You are not a participant in this conversation',
       );

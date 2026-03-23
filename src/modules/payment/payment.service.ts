@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { Payment, PaymentStatus } from './schemas/payment.schema';
-import { PayOSService, WebhookData } from './payos.service';
+import { PayOSService } from './payos.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 
 @Injectable()
@@ -14,7 +14,15 @@ export class PaymentService {
     @InjectModel('Payment') private paymentModel: Model<Payment>,
     private configService: ConfigService,
     private payosService: PayOSService,
-  ) {}
+  ) {
+    // Get frontend URL from env
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    if (!frontendUrl) {
+      this.logger.warn(
+        'FRONTEND_URL not configured. Payment success redirects may not work properly. Set FRONTEND_URL in .env',
+      );
+    }
+  }
 
   /**
    * Tạo đơn thanh toán mới và payment link
@@ -22,7 +30,6 @@ export class PaymentService {
   async createPayment(
     userId: string,
     createPaymentDto: CreatePaymentDto,
-    baseUrl: string,
   ): Promise<{
     _id: string;
     orderCode: number;
@@ -47,8 +54,13 @@ export class PaymentService {
     await payment.save();
 
     // Create payment link via PayOS
-    const returnUrl = `${baseUrl}/payment/success?orderCode=${orderCode}`;
-    const cancelUrl = `${baseUrl}/payment/cancel?orderCode=${orderCode}`;
+    // Use frontend URL for redirects
+    const frontendUrl = this.configService.get<string>(
+      'FRONTEND_URL',
+      'https://clubverse-ten.vercel.app',
+    );
+    const returnUrl = `${frontendUrl}/payment-success?orderCode=${orderCode}`;
+    const cancelUrl = `${frontendUrl}/payment-cancel?orderCode=${orderCode}`;
 
     const paymentLinkRequest = {
       orderCode,
@@ -204,6 +216,87 @@ export class PaymentService {
     } catch (error) {
       this.logger.error('Get payment status error:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Sync payment status từ PayOS API
+   * Gọi khi frontend vào trang payment success để update status từ PayOS
+   */
+  async syncPaymentStatus(orderCode: number) {
+    try {
+      this.logger.debug('Syncing payment status with PayOS:', orderCode);
+
+      // Query payment status từ PayOS
+      const payosPaymentLink =
+        await this.payosService.getPaymentLink(orderCode);
+
+      this.logger.debug('PayOS payment status:', {
+        orderCode,
+        payosStatus: payosPaymentLink.status,
+      });
+
+      // Find payment in database
+      const payment = await this.paymentModel.findOne({
+        transactionRef: `AI${orderCode}`,
+      });
+
+      if (!payment) {
+        this.logger.warn('Payment not found for orderCode:', orderCode);
+        return {
+          success: false,
+          message: 'Payment not found',
+          orderCode,
+        };
+      }
+
+      // Update payment status based on PayOS status
+      if (payosPaymentLink.status === 'COMPLETED') {
+        payment.status = PaymentStatus.COMPLETED;
+        payment.amountPaid = payosPaymentLink.amountPaid;
+        await payment.save();
+        return {
+          success: true,
+          message: 'Payment completed',
+          payment: {
+            _id: payment._id,
+            transactionRef: payment.transactionRef,
+            amount: payment.amount,
+            amountPaid: payosPaymentLink.amountPaid,
+            status: payment.status,
+          },
+        };
+      } else if (payosPaymentLink.status === 'CANCELLED') {
+        payment.status = PaymentStatus.CANCELLED;
+        await payment.save();
+
+        return {
+          success: false,
+          message: 'Payment was cancelled',
+          payment: {
+            _id: payment._id,
+            status: payment.status,
+          },
+        };
+      }
+
+      // Still pending or processing
+      return {
+        success: false,
+        message: `Payment status: ${payosPaymentLink.status}`,
+        payment: {
+          _id: payment._id,
+          status: payment.status,
+          payosStatus: payosPaymentLink.status,
+        },
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to sync payment status';
+      this.logger.error('Sync payment status error:', message);
+      throw new BadRequestException(message);
     }
   }
 }
