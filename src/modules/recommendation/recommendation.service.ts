@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { GoogleGenAI } from '@google/genai';
 import { GetClubRecommendationDto } from './dto/get-club-recommendation.dto';
+import { Role } from '../auth/enum/role.enum';
 
 export interface ClubRecommendation {
   clubName: string;
@@ -34,9 +35,9 @@ export class RecommendationService {
   ): Promise<ClubRecommendation[]> {
     const limit = dto.limit || 5;
 
-    // Lấy tất cả các câu lạc bộ từ database
+    // Lấy tất cả các câu lạc bộ từ database (chỉ role = club)
     const clubs = await this.userModel.find(
-      { category: { $exists: true } },
+      { role: Role.CLUB, category: { $exists: true } },
       {
         fullName: 1,
         category: 1,
@@ -124,7 +125,7 @@ Chỉ trả lại JSON, không có lời giải thích khác.`;
     userInterests: string[],
   ): Promise<string> {
     const club = await this.userModel.findOne(
-      { fullName: clubName, category: { $exists: true } },
+      { fullName: clubName, role: Role.CLUB, category: { $exists: true } },
       {
         fullName: 1,
         category: 1,
