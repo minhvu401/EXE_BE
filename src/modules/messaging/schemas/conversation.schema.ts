@@ -4,6 +4,18 @@ import { ApiProperty } from '@nestjs/swagger';
 
 @Schema({ timestamps: true })
 export class Conversation extends Document {
+  @ApiProperty({ example: 'Group Name' })
+  @Prop({ required: false })
+  name?: string;
+
+  @ApiProperty({ example: 'Group description' })
+  @Prop({ required: false })
+  description?: string;
+
+  @ApiProperty({ example: new Types.ObjectId().toString(), required: false })
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  createdBy?: Types.ObjectId;
+
   @ApiProperty({
     example: [new Types.ObjectId().toString(), new Types.ObjectId().toString()],
   })
@@ -11,14 +23,16 @@ export class Conversation extends Document {
     type: [Types.ObjectId],
     ref: 'User',
     required: true,
-    validate: {
-      validator: function (value: Types.ObjectId[]) {
-        return value.length === 2;
-      },
-      message: 'Conversation must have exactly 2 participants',
-    },
   })
   participants: Types.ObjectId[];
+
+  @ApiProperty({ example: 'group', enum: ['direct', 'group'] })
+  @Prop({ enum: ['direct', 'group'], default: 'direct' })
+  type: 'direct' | 'group';
+
+  @ApiProperty({ example: new Types.ObjectId().toString(), required: false })
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  groupIcon?: Types.ObjectId;
 
   @ApiProperty({ example: new Types.ObjectId().toString(), required: false })
   @Prop({ type: Types.ObjectId, ref: 'Message' })
@@ -37,10 +51,12 @@ export class Conversation extends Document {
   lastMessageAt: Date;
 
   @ApiProperty()
+  @Prop([{ type: Types.ObjectId, ref: 'User' }])
+  mutedBy?: Types.ObjectId[];
+
   @Prop({ default: Date.now })
   createdAt: Date;
 
-  @ApiProperty()
   @Prop({ default: Date.now })
   updatedAt: Date;
 }
